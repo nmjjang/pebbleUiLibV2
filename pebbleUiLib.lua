@@ -13,12 +13,10 @@
 	- Minimize
 	- Maximize
 	- Close
-	- Acrylic-style background
-	- Light rounding
+	- Glass / Acrylic-style background
+	- Light roundify
 
-	Important:
-	- Transparency affects ONLY the background
-	- No CanvasGroup / GroupTransparency
+	Transparency only affects backgrounds.
 ]]
 
 ------------------------------------------------------------
@@ -38,7 +36,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local Pebble = {}
 
-Pebble.Version = "0.1.1"
+Pebble.Version = "0.1.2"
 
 ------------------------------------------------------------
 -- THEME
@@ -47,11 +45,8 @@ Pebble.Version = "0.1.1"
 local Theme = {
 	Window = Color3.fromRGB(16, 17, 19),
 
-	GlassTop = Color3.fromRGB(35, 36, 40),
+	GlassTop = Color3.fromRGB(31, 32, 36),
 	GlassBottom = Color3.fromRGB(18, 19, 22),
-
-	TopbarTop = Color3.fromRGB(38, 39, 44),
-	TopbarBottom = Color3.fromRGB(23, 24, 28),
 
 	Text = Color3.fromRGB(245, 245, 247),
 	SubText = Color3.fromRGB(155, 156, 165),
@@ -93,7 +88,7 @@ local Defaults = {
 
 	TopbarHeight = 54,
 
-	CornerRadius = 10,
+	CornerRadius = 12,
 }
 
 ------------------------------------------------------------
@@ -290,13 +285,19 @@ local function CreateTag(window, data)
 		New("TextLabel", {
 			AutomaticSize = Enum.AutomaticSize.X,
 
-			Size = UDim2.new(0, 0, 1, 0),
+			Size = UDim2.new(
+				0,
+				0,
+				1,
+				0
+			),
 
 			BackgroundTransparency = 1,
 
 			Text = text,
 
 			TextColor3 = Theme.TagText,
+
 			TextTransparency = 0,
 
 			TextSize = 11,
@@ -476,14 +477,13 @@ function Window.new(config)
 		Name = "Window",
 
 		Size = self.Size,
-
 		Position = self.Position,
 
 		AnchorPoint = Vector2.new(0.5, 0.5),
 
 		BackgroundColor3 = Theme.Window,
 
-		-- ONLY THE BACKGROUND IS TRANSPARENT
+		-- Background-only glass transparency
 		BackgroundTransparency = 0.08,
 
 		BorderSizePixel = 0,
@@ -493,17 +493,16 @@ function Window.new(config)
 		Parent = screenGui,
 	}, {
 		New("UICorner", {
-			CornerRadius =
-				UDim.new(
-					0,
-					self.CornerRadius
-				),
+			CornerRadius = UDim.new(
+				0,
+				self.CornerRadius
+			),
 		}),
 
 		New("UIStroke", {
 			Color = Theme.Stroke,
 
-			Transparency = 0.86,
+			Transparency = 0.87,
 
 			Thickness = 1,
 		}),
@@ -524,18 +523,18 @@ function Window.new(config)
 			}),
 
 			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.06),
-				NumberSequenceKeypoint.new(0.5, 0.13),
-				NumberSequenceKeypoint.new(1, 0.04),
+				NumberSequenceKeypoint.new(0, 0.05),
+				NumberSequenceKeypoint.new(0.5, 0.12),
+				NumberSequenceKeypoint.new(1, 0.05),
 			}),
 		}),
 	})
 
 	self.Main = main
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- ACRYLIC NOISE
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local noise = New("ImageLabel", {
 		Name = "AcrylicNoise",
@@ -557,19 +556,18 @@ function Window.new(config)
 		Parent = main,
 	}, {
 		New("UICorner", {
-			CornerRadius =
-				UDim.new(
-					0,
-					self.CornerRadius
-				),
+			CornerRadius = UDim.new(
+				0,
+				self.CornerRadius
+			),
 		}),
 	})
 
 	self.Noise = noise
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- TOPBAR
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local topbar = New("Frame", {
 		Name = "Topbar",
@@ -581,10 +579,9 @@ function Window.new(config)
 			self.TopbarHeight
 		),
 
-		BackgroundColor3 = Theme.TopbarBottom,
-
-		-- Only topbar background
-		BackgroundTransparency = 0.10,
+		-- Same material as the main background
+		BackgroundColor3 = Theme.Window,
+		BackgroundTransparency = 0.08,
 
 		BorderSizePixel = 0,
 
@@ -595,32 +592,79 @@ function Window.new(config)
 		Parent = main,
 	}, {
 		New("UIGradient", {
-			Rotation = 90,
+			Rotation = 120,
 
 			Color = ColorSequence.new({
 				ColorSequenceKeypoint.new(
 					0,
-					Theme.TopbarTop
+					Theme.GlassTop
 				),
 
 				ColorSequenceKeypoint.new(
 					1,
-					Theme.TopbarBottom
+					Theme.GlassBottom
 				),
 			}),
 
 			Transparency = NumberSequence.new({
 				NumberSequenceKeypoint.new(0, 0.05),
-				NumberSequenceKeypoint.new(1, 0.16),
+				NumberSequenceKeypoint.new(0.5, 0.12),
+				NumberSequenceKeypoint.new(1, 0.05),
 			}),
 		}),
 	})
 
 	self.Topbar = topbar
 
-	--------------------------------------------------------
+	------------------------------------------------------------
+	-- TOPBAR ROUNDIFY MASK
+	------------------------------------------------------------
+
+	New("UICorner", {
+		CornerRadius = UDim.new(
+			0,
+			self.CornerRadius
+		),
+
+		Parent = topbar,
+	})
+
+	------------------------------------------------------------
+	-- REMOVE LOWER TOPBAR ROUNDING VISUALLY
+	------------------------------------------------------------
+
+	local topbarBottomFill = New("Frame", {
+		Name = "BottomFill",
+
+		Size = UDim2.new(
+			1,
+			0,
+			0,
+			self.CornerRadius
+		),
+
+		AnchorPoint = Vector2.new(0, 1),
+
+		Position = UDim2.new(
+			0,
+			0,
+			1,
+			0
+		),
+
+		BackgroundColor3 = Theme.Window,
+		BackgroundTransparency = 0.08,
+
+		BorderSizePixel = 0,
+
+		ZIndex = 5,
+
+		Parent = topbar,
+	})
+
+	------------------------------------------------------------
 	-- TOP HIGHLIGHT
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	New("Frame", {
 		Name = "TopHighlight",
@@ -643,7 +687,7 @@ function Window.new(config)
 
 		BackgroundColor3 = Color3.new(1, 1, 1),
 
-		BackgroundTransparency = 0.92,
+		BackgroundTransparency = 0.94,
 
 		BorderSizePixel = 0,
 
@@ -652,9 +696,9 @@ function Window.new(config)
 		Parent = topbar,
 	})
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- SEPARATOR
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	New("Frame", {
 		Name = "Separator",
@@ -677,18 +721,18 @@ function Window.new(config)
 
 		BackgroundColor3 = Color3.new(1, 1, 1),
 
-		BackgroundTransparency = 0.90,
+		BackgroundTransparency = 0.94,
 
 		BorderSizePixel = 0,
 
-		ZIndex = 6,
+		ZIndex = 7,
 
 		Parent = topbar,
 	})
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- APP ICON HOLDER
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local iconHolder = New("Frame", {
 		Name = "IconHolder",
@@ -710,7 +754,7 @@ function Window.new(config)
 
 		BorderSizePixel = 0,
 
-		ZIndex = 7,
+		ZIndex = 8,
 
 		Parent = topbar,
 	}, {
@@ -735,17 +779,16 @@ function Window.new(config)
 	appIcon.Position = UDim2.fromScale(0.5, 0.5)
 
 	appIcon.ImageColor3 = Theme.Text
-	appIcon.ImageTransparency = 0
 
-	appIcon.ZIndex = 8
+	appIcon.ZIndex = 9
 
 	appIcon.Parent = iconHolder
 
 	self.IconImage = appIcon
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- HEADER
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local header = New("Frame", {
 		Name = "Header",
@@ -761,16 +804,16 @@ function Window.new(config)
 
 		BackgroundTransparency = 1,
 
-		ZIndex = 7,
+		ZIndex = 8,
 
 		Parent = topbar,
 	})
 
 	self.Header = header
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- TITLE
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local title = New("TextLabel", {
 		Name = "Title",
@@ -802,16 +845,16 @@ function Window.new(config)
 
 		TextXAlignment = Enum.TextXAlignment.Left,
 
-		ZIndex = 8,
+		ZIndex = 9,
 
 		Parent = header,
 	})
 
 	self.TitleLabel = title
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- VERSION
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local version = New("TextLabel", {
 		Name = "Version",
@@ -836,16 +879,16 @@ function Window.new(config)
 
 		TextXAlignment = Enum.TextXAlignment.Left,
 
-		ZIndex = 8,
+		ZIndex = 9,
 
 		Parent = header,
 	})
 
 	self.VersionLabel = version
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- TAGS
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local tagContainer = New("Frame", {
 		Name = "Tags",
@@ -858,7 +901,7 @@ function Window.new(config)
 
 		BackgroundTransparency = 1,
 
-		ZIndex = 8,
+		ZIndex = 9,
 
 		Parent = header,
 	}, {
@@ -873,9 +916,9 @@ function Window.new(config)
 
 	self.TagContainer = tagContainer
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- HEADER POSITIONING
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local function UpdateHeader()
 		task.defer(function()
@@ -917,9 +960,9 @@ function Window.new(config)
 		)
 	)
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- CONTROLS
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local controls = New("Frame", {
 		Name = "Controls",
@@ -994,9 +1037,9 @@ function Window.new(config)
 	self.MaximizeIcon = maximizeIcon
 	self.CloseIcon = closeIcon
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- CONTENT
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	local content = New("Frame", {
 		Name = "Content",
@@ -1024,31 +1067,31 @@ function Window.new(config)
 
 	self.Content = content
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- TAGS
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	self:SetTags(self.Tags)
 
 	UpdateHeader()
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- DRAG
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	self:_SetupDrag()
 
-	--------------------------------------------------------
+	------------------------------------------------------------
 	-- RESIZE
-	--------------------------------------------------------
+	------------------------------------------------------------
 
 	if self.Resizable then
 		self:_SetupResize()
 	end
 
-	--------------------------------------------------------
-	-- CONTROL EVENTS
-	--------------------------------------------------------
+	------------------------------------------------------------
+	-- EVENTS
+	------------------------------------------------------------
 
 	AddConnection(
 		self,
@@ -1071,9 +1114,9 @@ function Window.new(config)
 		end)
 	)
 
-	--------------------------------------------------------
-	-- INTRO ANIMATION
-	--------------------------------------------------------
+	------------------------------------------------------------
+	-- INTRO
+	------------------------------------------------------------
 
 	local originalSize = main.Size
 
@@ -1316,7 +1359,7 @@ function Window:_SetupResize()
 end
 
 ------------------------------------------------------------
--- SET TITLE
+-- TITLE
 ------------------------------------------------------------
 
 function Window:SetTitle(value)
@@ -1330,7 +1373,7 @@ function Window:SetTitle(value)
 end
 
 ------------------------------------------------------------
--- SET VERSION
+-- VERSION
 ------------------------------------------------------------
 
 function Window:SetVersion(value)
@@ -1344,7 +1387,7 @@ function Window:SetVersion(value)
 end
 
 ------------------------------------------------------------
--- SET ICON
+-- ICON
 ------------------------------------------------------------
 
 function Window:SetIcon(name)
