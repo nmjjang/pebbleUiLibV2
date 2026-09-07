@@ -1,6 +1,6 @@
 --[[
 	Pebble UI Library
-	Window Base - v0.1
+	Window Base
 
 	Features:
 	- Window
@@ -11,9 +11,14 @@
 	- Drag
 	- Resize
 	- Minimize
-	- Maximize / Restore
+	- Maximize
 	- Close
-	- Acrylic / Glass appearance
+	- Acrylic-style background
+	- Light rounding
+
+	Important:
+	- Transparency affects ONLY the background
+	- No CanvasGroup / GroupTransparency
 ]]
 
 ------------------------------------------------------------
@@ -33,7 +38,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local Pebble = {}
 
-Pebble.Version = "0.1.0"
+Pebble.Version = "0.1.1"
 
 ------------------------------------------------------------
 -- THEME
@@ -42,30 +47,30 @@ Pebble.Version = "0.1.0"
 local Theme = {
 	Window = Color3.fromRGB(16, 17, 19),
 
-	GlassTop = Color3.fromRGB(37, 38, 43),
-	GlassBottom = Color3.fromRGB(19, 20, 23),
+	GlassTop = Color3.fromRGB(35, 36, 40),
+	GlassBottom = Color3.fromRGB(18, 19, 22),
 
-	TopbarTop = Color3.fromRGB(43, 44, 49),
-	TopbarBottom = Color3.fromRGB(25, 26, 30),
+	TopbarTop = Color3.fromRGB(38, 39, 44),
+	TopbarBottom = Color3.fromRGB(23, 24, 28),
 
 	Text = Color3.fromRGB(245, 245, 247),
-	SubText = Color3.fromRGB(154, 155, 164),
+	SubText = Color3.fromRGB(155, 156, 165),
 
-	Icon = Color3.fromRGB(213, 214, 220),
+	Icon = Color3.fromRGB(215, 216, 222),
 
 	Stroke = Color3.fromRGB(255, 255, 255),
 
 	Hover = Color3.fromRGB(255, 255, 255),
 
 	Close = Color3.fromRGB(235, 76, 76),
-	CloseIcon = Color3.fromRGB(255, 175, 175),
+	CloseIcon = Color3.fromRGB(255, 178, 178),
 
 	Tag = Color3.fromRGB(255, 255, 255),
 	TagText = Color3.fromRGB(205, 206, 214),
 }
 
 ------------------------------------------------------------
--- DEFAULT CONFIG
+-- DEFAULTS
 ------------------------------------------------------------
 
 local Defaults = {
@@ -116,13 +121,11 @@ end
 local function Tween(object, duration, properties)
 	local tween = TweenService:Create(
 		object,
-
 		TweenInfo.new(
 			duration,
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.Out
 		),
-
 		properties
 	)
 
@@ -181,10 +184,7 @@ do
 	if success and typeof(result) == "table" then
 		LucideIcons = result
 	else
-		warn(
-			"[Pebble] Failed to load Lucide:",
-			result
-		)
+		warn("[Pebble] Failed to load Lucide:", result)
 	end
 end
 
@@ -201,26 +201,14 @@ local function GetIcon(name)
 		return nil
 	end
 
-	--------------------------------------------------------
-	-- DIRECT ROBLOX ASSET
-	--------------------------------------------------------
-
 	if string.match(name, "^rbxassetid://") then
 		return name
 	end
 
-	--------------------------------------------------------
-	-- LUCIDE
-	--------------------------------------------------------
-
 	local image = LucideIcons[name]
 
 	if not image then
-		warn(
-			"[Pebble] Lucide icon not found:",
-			name
-		)
-
+		warn("[Pebble] Lucide icon not found:", name)
 		return nil
 	end
 
@@ -244,6 +232,8 @@ local function CreateIcon(name, size)
 
 		ImageColor3 = Theme.Icon,
 
+		ImageTransparency = 0,
+
 		ScaleType = Enum.ScaleType.Fit,
 	})
 end
@@ -263,10 +253,7 @@ local function CreateTag(window, data)
 	local text
 
 	if typeof(data) == "table" then
-		text =
-			data.Text
-			or data.Name
-			or "Tag"
+		text = data.Text or data.Name or "Tag"
 	else
 		text = tostring(data)
 	end
@@ -276,14 +263,10 @@ local function CreateTag(window, data)
 
 		AutomaticSize = Enum.AutomaticSize.X,
 
-		Size = UDim2.fromOffset(
-			0,
-			22
-		),
+		Size = UDim2.fromOffset(0, 22),
 
 		BackgroundColor3 = Theme.Tag,
-
-		BackgroundTransparency = 0.94,
+		BackgroundTransparency = 0.92,
 
 		BorderSizePixel = 0,
 
@@ -295,7 +278,7 @@ local function CreateTag(window, data)
 
 		New("UIStroke", {
 			Color = Theme.Stroke,
-			Transparency = 0.92,
+			Transparency = 0.90,
 			Thickness = 1,
 		}),
 
@@ -307,20 +290,14 @@ local function CreateTag(window, data)
 		New("TextLabel", {
 			AutomaticSize = Enum.AutomaticSize.X,
 
-			Size = UDim2.new(
-				0,
-				0,
-				1,
-				0
-			),
+			Size = UDim2.new(0, 0, 1, 0),
 
 			BackgroundTransparency = 1,
 
 			Text = text,
 
 			TextColor3 = Theme.TagText,
-
-			TextTransparency = 0.06,
+			TextTransparency = 0,
 
 			TextSize = 11,
 
@@ -345,10 +322,7 @@ local function CreateControlButton(
 	local button = New("ImageButton", {
 		Name = name,
 
-		Size = UDim2.fromOffset(
-			30,
-			30
-		),
+		Size = UDim2.fromOffset(30, 30),
 
 		BackgroundColor3 =
 			isClose
@@ -362,51 +336,35 @@ local function CreateControlButton(
 		AutoButtonColor = false,
 
 		Image = "",
+
+		ZIndex = 10,
 	}, {
 		New("UICorner", {
 			CornerRadius = UDim.new(0, 7),
 		}),
 	})
 
-	local icon = CreateIcon(
-		iconName,
-		16
-	)
+	local icon = CreateIcon(iconName, 16)
 
-	icon.AnchorPoint = Vector2.new(
-		0.5,
-		0.5
-	)
-
-	icon.Position = UDim2.fromScale(
-		0.5,
-		0.5
-	)
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
 
 	icon.ImageColor3 = Theme.SubText
+	icon.ImageTransparency = 0
 
-	icon.ImageTransparency = 0.05
-
-	icon.ZIndex = 2
+	icon.ZIndex = 11
 
 	icon.Parent = button
 
-	--------------------------------------------------------
-	-- HOVER
-	--------------------------------------------------------
-
 	AddConnection(
 		window,
-
 		button.MouseEnter:Connect(function()
 			Tween(
 				button,
 				0.15,
 				{
 					BackgroundTransparency =
-						isClose
-						and 0.82
-						or 0.93,
+						isClose and 0.80 or 0.92,
 				}
 			)
 
@@ -418,8 +376,6 @@ local function CreateControlButton(
 						isClose
 						and Theme.CloseIcon
 						or Theme.Text,
-
-					ImageTransparency = 0,
 				}
 			)
 		end)
@@ -427,7 +383,6 @@ local function CreateControlButton(
 
 	AddConnection(
 		window,
-
 		button.MouseLeave:Connect(function()
 			Tween(
 				button,
@@ -442,7 +397,6 @@ local function CreateControlButton(
 				0.15,
 				{
 					ImageColor3 = Theme.SubText,
-					ImageTransparency = 0.05,
 				}
 			)
 		end)
@@ -452,7 +406,7 @@ local function CreateControlButton(
 end
 
 ------------------------------------------------------------
--- CREATE WINDOW
+-- WINDOW CONSTRUCTOR
 ------------------------------------------------------------
 
 function Window.new(config)
@@ -460,49 +414,21 @@ function Window.new(config)
 
 	local self = setmetatable({}, Window)
 
-	--------------------------------------------------------
-	-- CONFIG
-	--------------------------------------------------------
+	self.Title = config.Title or Defaults.Title
+	self.Version = config.Version or Defaults.Version
+	self.Icon = config.Icon or Defaults.Icon
 
-	self.Title =
-		config.Title
-		or Defaults.Title
+	self.Tags = config.Tags or {}
 
-	self.Version =
-		config.Version
-		or Defaults.Version
+	self.Size = config.Size or Defaults.Size
 
-	self.Icon =
-		config.Icon
-		or Defaults.Icon
+	self.MinSize = config.MinSize or Defaults.MinSize
+	self.MaxSize = config.MaxSize or Defaults.MaxSize
 
-	self.Tags =
-		config.Tags
-		or {}
+	self.Position = config.Position or Defaults.Position
 
-	self.Size =
-		config.Size
-		or Defaults.Size
-
-	self.MinSize =
-		config.MinSize
-		or Defaults.MinSize
-
-	self.MaxSize =
-		config.MaxSize
-		or Defaults.MaxSize
-
-	self.Position =
-		config.Position
-		or Defaults.Position
-
-	self.Draggable =
-		config.Draggable
-		~= false
-
-	self.Resizable =
-		config.Resizable
-		~= false
+	self.Draggable = config.Draggable ~= false
+	self.Resizable = config.Resizable ~= false
 
 	self.TopbarHeight =
 		config.TopbarHeight
@@ -518,10 +444,6 @@ function Window.new(config)
 
 	self._Connections = {}
 
-	self._RestoreSize = nil
-	self._RestorePosition = nil
-	self._RestoreAnchor = nil
-
 	--------------------------------------------------------
 	-- SCREEN GUI
 	--------------------------------------------------------
@@ -530,56 +452,43 @@ function Window.new(config)
 		Name =
 			"Pebble_"
 			.. tostring(
-				math.random(
-					100000,
-					999999
-				)
+				math.random(100000, 999999)
 			),
 
 		ResetOnSpawn = false,
 
 		IgnoreGuiInset = false,
 
-		ZIndexBehavior =
-			Enum.ZIndexBehavior.Sibling,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 
 		DisplayOrder = 999999,
 	})
 
-	screenGui.Parent =
-		GetGuiParent()
+	screenGui.Parent = GetGuiParent()
 
-	self.ScreenGui =
-		screenGui
+	self.ScreenGui = screenGui
 
 	--------------------------------------------------------
 	-- MAIN WINDOW
 	--------------------------------------------------------
 
-	local main = New("CanvasGroup", {
+	local main = New("Frame", {
 		Name = "Window",
 
 		Size = self.Size,
 
 		Position = self.Position,
 
-		AnchorPoint =
-			Vector2.new(
-				0.5,
-				0.5
-			),
+		AnchorPoint = Vector2.new(0.5, 0.5),
 
-		BackgroundColor3 =
-			Theme.Window,
+		BackgroundColor3 = Theme.Window,
 
-		BackgroundTransparency =
-			0.04,
+		-- ONLY THE BACKGROUND IS TRANSPARENT
+		BackgroundTransparency = 0.08,
 
 		BorderSizePixel = 0,
 
 		ClipsDescendants = true,
-
-		GroupTransparency = 0,
 
 		Parent = screenGui,
 	}, {
@@ -594,7 +503,7 @@ function Window.new(config)
 		New("UIStroke", {
 			Color = Theme.Stroke,
 
-			Transparency = 0.88,
+			Transparency = 0.86,
 
 			Thickness = 1,
 		}),
@@ -614,24 +523,11 @@ function Window.new(config)
 				),
 			}),
 
-			Transparency =
-				NumberSequence.new({
-
-					NumberSequenceKeypoint.new(
-						0,
-						0.20
-					),
-
-					NumberSequenceKeypoint.new(
-						0.55,
-						0.38
-					),
-
-					NumberSequenceKeypoint.new(
-						1,
-						0.15
-					),
-				}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.06),
+				NumberSequenceKeypoint.new(0.5, 0.13),
+				NumberSequenceKeypoint.new(1, 0.04),
+			}),
 		}),
 	})
 
@@ -644,27 +540,17 @@ function Window.new(config)
 	local noise = New("ImageLabel", {
 		Name = "AcrylicNoise",
 
-		Size = UDim2.fromScale(
-			1,
-			1
-		),
+		Size = UDim2.fromScale(1, 1),
 
 		BackgroundTransparency = 1,
 
-		Image =
-			"rbxassetid://9968344227",
+		Image = "rbxassetid://9968344227",
 
-		ImageTransparency =
-			0.93,
+		ImageTransparency = 0.97,
 
-		ScaleType =
-			Enum.ScaleType.Tile,
+		ScaleType = Enum.ScaleType.Tile,
 
-		TileSize =
-			UDim2.fromOffset(
-				128,
-				128
-			),
+		TileSize = UDim2.fromOffset(128, 128),
 
 		ZIndex = 1,
 
@@ -688,19 +574,17 @@ function Window.new(config)
 	local topbar = New("Frame", {
 		Name = "Topbar",
 
-		Size =
-			UDim2.new(
-				1,
-				0,
-				0,
-				self.TopbarHeight
-			),
+		Size = UDim2.new(
+			1,
+			0,
+			0,
+			self.TopbarHeight
+		),
 
-		BackgroundColor3 =
-			Theme.TopbarBottom,
+		BackgroundColor3 = Theme.TopbarBottom,
 
-		BackgroundTransparency =
-			0.22,
+		-- Only topbar background
+		BackgroundTransparency = 0.10,
 
 		BorderSizePixel = 0,
 
@@ -713,32 +597,22 @@ function Window.new(config)
 		New("UIGradient", {
 			Rotation = 90,
 
-			Color =
-				ColorSequence.new({
-					ColorSequenceKeypoint.new(
-						0,
-						Theme.TopbarTop
-					),
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(
+					0,
+					Theme.TopbarTop
+				),
 
-					ColorSequenceKeypoint.new(
-						1,
-						Theme.TopbarBottom
-					),
-				}),
+				ColorSequenceKeypoint.new(
+					1,
+					Theme.TopbarBottom
+				),
+			}),
 
-			Transparency =
-				NumberSequence.new({
-
-					NumberSequenceKeypoint.new(
-						0,
-						0.16
-					),
-
-					NumberSequenceKeypoint.new(
-						1,
-						0.44
-					),
-				}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.05),
+				NumberSequenceKeypoint.new(1, 0.16),
+			}),
 		}),
 	})
 
@@ -749,39 +623,27 @@ function Window.new(config)
 	--------------------------------------------------------
 
 	New("Frame", {
-		Name = "Highlight",
+		Name = "TopHighlight",
 
-		Size =
-			UDim2.new(
-				1,
-				-18,
-				0,
-				1
-			),
+		Size = UDim2.new(
+			1,
+			-20,
+			0,
+			1
+		),
 
-		AnchorPoint =
-			Vector2.new(
-				0.5,
-				0
-			),
+		AnchorPoint = Vector2.new(0.5, 0),
 
-		Position =
-			UDim2.new(
-				0.5,
-				0,
-				0,
-				1
-			),
+		Position = UDim2.new(
+			0.5,
+			0,
+			0,
+			1
+		),
 
-		BackgroundColor3 =
-			Color3.new(
-				1,
-				1,
-				1
-			),
+		BackgroundColor3 = Color3.new(1, 1, 1),
 
-		BackgroundTransparency =
-			0.92,
+		BackgroundTransparency = 0.92,
 
 		BorderSizePixel = 0,
 
@@ -797,37 +659,25 @@ function Window.new(config)
 	New("Frame", {
 		Name = "Separator",
 
-		Size =
-			UDim2.new(
-				1,
-				-18,
-				0,
-				1
-			),
+		Size = UDim2.new(
+			1,
+			-20,
+			0,
+			1
+		),
 
-		AnchorPoint =
-			Vector2.new(
-				0.5,
-				1
-			),
+		AnchorPoint = Vector2.new(0.5, 1),
 
-		Position =
-			UDim2.new(
-				0.5,
-				0,
-				1,
-				0
-			),
+		Position = UDim2.new(
+			0.5,
+			0,
+			1,
+			0
+		),
 
-		BackgroundColor3 =
-			Color3.new(
-				1,
-				1,
-				1
-			),
+		BackgroundColor3 = Color3.new(1, 1, 1),
 
-		BackgroundTransparency =
-			0.92,
+		BackgroundTransparency = 0.90,
 
 		BorderSizePixel = 0,
 
@@ -843,35 +693,20 @@ function Window.new(config)
 	local iconHolder = New("Frame", {
 		Name = "IconHolder",
 
-		Size =
-			UDim2.fromOffset(
-				32,
-				32
-			),
+		Size = UDim2.fromOffset(32, 32),
 
-		AnchorPoint =
-			Vector2.new(
-				0,
-				0.5
-			),
+		AnchorPoint = Vector2.new(0, 0.5),
 
-		Position =
-			UDim2.new(
-				0,
-				13,
-				0.5,
-				0
-			),
+		Position = UDim2.new(
+			0,
+			13,
+			0.5,
+			0
+		),
 
-		BackgroundColor3 =
-			Color3.new(
-				1,
-				1,
-				1
-			),
+		BackgroundColor3 = Color3.new(1, 1, 1),
 
-		BackgroundTransparency =
-			0.94,
+		BackgroundTransparency = 0.93,
 
 		BorderSizePixel = 0,
 
@@ -880,53 +715,33 @@ function Window.new(config)
 		Parent = topbar,
 	}, {
 		New("UICorner", {
-			CornerRadius =
-				UDim.new(
-					0,
-					8
-				),
+			CornerRadius = UDim.new(0, 8),
 		}),
 
 		New("UIStroke", {
 			Color = Theme.Stroke,
 
-			Transparency = 0.91,
+			Transparency = 0.90,
 
 			Thickness = 1,
 		}),
 	})
 
-	self.IconHolder =
-		iconHolder
+	self.IconHolder = iconHolder
 
-	local appIcon =
-		CreateIcon(
-			self.Icon,
-			18
-		)
+	local appIcon = CreateIcon(self.Icon, 18)
 
-	appIcon.AnchorPoint =
-		Vector2.new(
-			0.5,
-			0.5
-		)
+	appIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	appIcon.Position = UDim2.fromScale(0.5, 0.5)
 
-	appIcon.Position =
-		UDim2.fromScale(
-			0.5,
-			0.5
-		)
-
-	appIcon.ImageColor3 =
-		Theme.Text
+	appIcon.ImageColor3 = Theme.Text
+	appIcon.ImageTransparency = 0
 
 	appIcon.ZIndex = 8
 
-	appIcon.Parent =
-		iconHolder
+	appIcon.Parent = iconHolder
 
-	self.IconImage =
-		appIcon
+	self.IconImage = appIcon
 
 	--------------------------------------------------------
 	-- HEADER
@@ -935,19 +750,14 @@ function Window.new(config)
 	local header = New("Frame", {
 		Name = "Header",
 
-		Position =
-			UDim2.fromOffset(
-				55,
-				0
-			),
+		Position = UDim2.fromOffset(55, 0),
 
-		Size =
-			UDim2.new(
-				1,
-				-190,
-				1,
-				0
-			),
+		Size = UDim2.new(
+			1,
+			-190,
+			1,
+			0
+		),
 
 		BackgroundTransparency = 1,
 
@@ -965,28 +775,18 @@ function Window.new(config)
 	local title = New("TextLabel", {
 		Name = "Title",
 
-		AutomaticSize =
-			Enum.AutomaticSize.X,
+		AutomaticSize = Enum.AutomaticSize.X,
 
-		Size =
-			UDim2.fromOffset(
-				0,
-				20
-			),
+		Size = UDim2.fromOffset(0, 20),
 
-		AnchorPoint =
-			Vector2.new(
-				0,
-				0.5
-			),
+		AnchorPoint = Vector2.new(0, 0.5),
 
-		Position =
-			UDim2.new(
-				0,
-				0,
-				0.5,
-				0
-			),
+		Position = UDim2.new(
+			0,
+			0,
+			0.5,
+			0
+		),
 
 		BackgroundTransparency = 1,
 
@@ -994,21 +794,20 @@ function Window.new(config)
 
 		TextColor3 = Theme.Text,
 
+		TextTransparency = 0,
+
 		TextSize = 15,
 
-		Font =
-			Enum.Font.GothamSemibold,
+		Font = Enum.Font.GothamSemibold,
 
-		TextXAlignment =
-			Enum.TextXAlignment.Left,
+		TextXAlignment = Enum.TextXAlignment.Left,
 
 		ZIndex = 8,
 
 		Parent = header,
 	})
 
-	self.TitleLabel =
-		title
+	self.TitleLabel = title
 
 	--------------------------------------------------------
 	-- VERSION
@@ -1017,68 +816,45 @@ function Window.new(config)
 	local version = New("TextLabel", {
 		Name = "Version",
 
-		AutomaticSize =
-			Enum.AutomaticSize.X,
+		AutomaticSize = Enum.AutomaticSize.X,
 
-		Size =
-			UDim2.fromOffset(
-				0,
-				18
-			),
+		Size = UDim2.fromOffset(0, 18),
 
-		AnchorPoint =
-			Vector2.new(
-				0,
-				0.5
-			),
+		AnchorPoint = Vector2.new(0, 0.5),
 
 		BackgroundTransparency = 1,
 
 		Text = self.Version,
 
-		TextColor3 =
-			Theme.SubText,
+		TextColor3 = Theme.SubText,
 
-		TextTransparency =
-			0.08,
+		TextTransparency = 0,
 
 		TextSize = 11,
 
-		Font =
-			Enum.Font.GothamMedium,
+		Font = Enum.Font.GothamMedium,
 
-		TextXAlignment =
-			Enum.TextXAlignment.Left,
+		TextXAlignment = Enum.TextXAlignment.Left,
 
 		ZIndex = 8,
 
 		Parent = header,
 	})
 
-	self.VersionLabel =
-		version
+	self.VersionLabel = version
 
 	--------------------------------------------------------
-	-- TAG CONTAINER
+	-- TAGS
 	--------------------------------------------------------
 
 	local tagContainer = New("Frame", {
 		Name = "Tags",
 
-		AutomaticSize =
-			Enum.AutomaticSize.X,
+		AutomaticSize = Enum.AutomaticSize.X,
 
-		Size =
-			UDim2.fromOffset(
-				0,
-				22
-			),
+		Size = UDim2.fromOffset(0, 22),
 
-		AnchorPoint =
-			Vector2.new(
-				0,
-				0.5
-			),
+		AnchorPoint = Vector2.new(0, 0.5),
 
 		BackgroundTransparency = 1,
 
@@ -1087,25 +863,18 @@ function Window.new(config)
 		Parent = header,
 	}, {
 		New("UIListLayout", {
-			FillDirection =
-				Enum.FillDirection.Horizontal,
+			FillDirection = Enum.FillDirection.Horizontal,
 
-			VerticalAlignment =
-				Enum.VerticalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
 
-			Padding =
-				UDim.new(
-					0,
-					5
-				),
+			Padding = UDim.new(0, 5),
 		}),
 	})
 
-	self.TagContainer =
-		tagContainer
+	self.TagContainer = tagContainer
 
 	--------------------------------------------------------
-	-- UPDATE HEADER
+	-- HEADER POSITIONING
 	--------------------------------------------------------
 
 	local function UpdateHeader()
@@ -1114,81 +883,59 @@ function Window.new(config)
 				return
 			end
 
-			version.Position =
-				UDim2.new(
-					0,
-					title.TextBounds.X + 8,
+			version.Position = UDim2.new(
+				0,
+				title.TextBounds.X + 8,
+				0.5,
+				0
+			)
 
-					0.5,
-					0
-				)
-
-			tagContainer.Position =
-				UDim2.new(
-					0,
-
-					title.TextBounds.X
-						+ version.TextBounds.X
-						+ 17,
-
-					0.5,
-					0
-				)
+			tagContainer.Position = UDim2.new(
+				0,
+				title.TextBounds.X
+					+ version.TextBounds.X
+					+ 17,
+				0.5,
+				0
+			)
 		end)
 	end
 
-	self._UpdateHeader =
-		UpdateHeader
+	self._UpdateHeader = UpdateHeader
 
 	AddConnection(
 		self,
-
-		title:GetPropertyChangedSignal(
-			"TextBounds"
-		):Connect(
+		title:GetPropertyChangedSignal("TextBounds"):Connect(
 			UpdateHeader
 		)
 	)
 
 	AddConnection(
 		self,
-
-		version:GetPropertyChangedSignal(
-			"TextBounds"
-		):Connect(
+		version:GetPropertyChangedSignal("TextBounds"):Connect(
 			UpdateHeader
 		)
 	)
 
 	--------------------------------------------------------
-	-- CONTROLS HOLDER
+	-- CONTROLS
 	--------------------------------------------------------
 
 	local controls = New("Frame", {
 		Name = "Controls",
 
-		AutomaticSize =
-			Enum.AutomaticSize.X,
+		AutomaticSize = Enum.AutomaticSize.X,
 
-		Size =
-			UDim2.fromOffset(
-				0,
-				30
-			),
+		Size = UDim2.fromOffset(0, 30),
 
-		AnchorPoint =
-			Vector2.new(
-				1,
-				0.5
-			),
+		AnchorPoint = Vector2.new(1, 0.5),
 
-		Position =
-			UDim2.new(
-				1,
-				-10,
-				0.5,
-				0
-			),
+		Position = UDim2.new(
+			1,
+			-10,
+			0.5,
+			0
+		),
 
 		BackgroundTransparency = 1,
 
@@ -1197,29 +944,17 @@ function Window.new(config)
 		Parent = topbar,
 	}, {
 		New("UIListLayout", {
-			FillDirection =
-				Enum.FillDirection.Horizontal,
+			FillDirection = Enum.FillDirection.Horizontal,
 
-			HorizontalAlignment =
-				Enum.HorizontalAlignment.Right,
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
 
-			VerticalAlignment =
-				Enum.VerticalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
 
-			Padding =
-				UDim.new(
-					0,
-					3
-				),
+			Padding = UDim.new(0, 3),
 		}),
 	})
 
-	self.Controls =
-		controls
-
-	--------------------------------------------------------
-	-- MINIMIZE
-	--------------------------------------------------------
+	self.Controls = controls
 
 	local minimizeButton, minimizeIcon =
 		CreateControlButton(
@@ -1229,12 +964,7 @@ function Window.new(config)
 			false
 		)
 
-	minimizeButton.Parent =
-		controls
-
-	--------------------------------------------------------
-	-- MAXIMIZE
-	--------------------------------------------------------
+	minimizeButton.Parent = controls
 
 	local maximizeButton, maximizeIcon =
 		CreateControlButton(
@@ -1244,12 +974,7 @@ function Window.new(config)
 			false
 		)
 
-	maximizeButton.Parent =
-		controls
-
-	--------------------------------------------------------
-	-- CLOSE
-	--------------------------------------------------------
+	maximizeButton.Parent = controls
 
 	local closeButton, closeIcon =
 		CreateControlButton(
@@ -1259,26 +984,15 @@ function Window.new(config)
 			true
 		)
 
-	closeButton.Parent =
-		controls
+	closeButton.Parent = controls
 
-	self.MinimizeButton =
-		minimizeButton
+	self.MinimizeButton = minimizeButton
+	self.MaximizeButton = maximizeButton
+	self.CloseButton = closeButton
 
-	self.MaximizeButton =
-		maximizeButton
-
-	self.CloseButton =
-		closeButton
-
-	self.MinimizeIcon =
-		minimizeIcon
-
-	self.MaximizeIcon =
-		maximizeIcon
-
-	self.CloseIcon =
-		closeIcon
+	self.MinimizeIcon = minimizeIcon
+	self.MaximizeIcon = maximizeIcon
+	self.CloseIcon = closeIcon
 
 	--------------------------------------------------------
 	-- CONTENT
@@ -1287,20 +1001,17 @@ function Window.new(config)
 	local content = New("Frame", {
 		Name = "Content",
 
-		Position =
-			UDim2.fromOffset(
-				0,
-				self.TopbarHeight
-			),
+		Position = UDim2.fromOffset(
+			0,
+			self.TopbarHeight
+		),
 
-		Size =
-			UDim2.new(
-				1,
-				0,
-
-				1,
-				-self.TopbarHeight
-			),
+		Size = UDim2.new(
+			1,
+			0,
+			1,
+			-self.TopbarHeight
+		),
 
 		BackgroundTransparency = 1,
 
@@ -1311,16 +1022,13 @@ function Window.new(config)
 		Parent = main,
 	})
 
-	self.Content =
-		content
+	self.Content = content
 
 	--------------------------------------------------------
 	-- TAGS
 	--------------------------------------------------------
 
-	self:SetTags(
-		self.Tags
-	)
+	self:SetTags(self.Tags)
 
 	UpdateHeader()
 
@@ -1339,62 +1047,48 @@ function Window.new(config)
 	end
 
 	--------------------------------------------------------
-	-- EVENTS
+	-- CONTROL EVENTS
 	--------------------------------------------------------
 
 	AddConnection(
 		self,
-
-		minimizeButton.MouseButton1Click:Connect(
-			function()
-				self:ToggleMinimize()
-			end
-		)
+		minimizeButton.MouseButton1Click:Connect(function()
+			self:ToggleMinimize()
+		end)
 	)
 
 	AddConnection(
 		self,
-
-		maximizeButton.MouseButton1Click:Connect(
-			function()
-				self:ToggleMaximize()
-			end
-		)
+		maximizeButton.MouseButton1Click:Connect(function()
+			self:ToggleMaximize()
+		end)
 	)
 
 	AddConnection(
 		self,
-
-		closeButton.MouseButton1Click:Connect(
-			function()
-				self:Close()
-			end
-		)
+		closeButton.MouseButton1Click:Connect(function()
+			self:Close()
+		end)
 	)
 
 	--------------------------------------------------------
-	-- INTRO
+	-- INTRO ANIMATION
 	--------------------------------------------------------
 
-	main.GroupTransparency = 1
+	local originalSize = main.Size
 
-	local originalSize =
-		main.Size
+	main.Size = UDim2.new(
+		originalSize.X.Scale,
+		originalSize.X.Offset - 14,
 
-	main.Size =
-		UDim2.new(
-			originalSize.X.Scale,
-			originalSize.X.Offset - 18,
-
-			originalSize.Y.Scale,
-			originalSize.Y.Offset - 18
-		)
+		originalSize.Y.Scale,
+		originalSize.Y.Offset - 14
+	)
 
 	Tween(
 		main,
-		0.32,
+		0.28,
 		{
-			GroupTransparency = 0,
 			Size = originalSize,
 		}
 	)
@@ -1412,99 +1106,71 @@ function Window:_SetupDrag()
 	end
 
 	local dragging = false
-
-	local dragInput
-
 	local dragStart
-
 	local startPosition
 
 	AddConnection(
 		self,
-
-		self.Topbar.InputBegan:Connect(
-			function(input)
-				if self.Maximized then
-					return
-				end
-
-				if
-					input.UserInputType
-						== Enum.UserInputType.MouseButton1
-
-					or input.UserInputType
-						== Enum.UserInputType.Touch
-				then
-					dragging = true
-
-					dragInput =
-						input
-
-					dragStart =
-						input.Position
-
-					startPosition =
-						self.Main.Position
-				end
+		self.Topbar.InputBegan:Connect(function(input)
+			if self.Maximized then
+				return
 			end
-		)
+
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseButton1
+				or input.UserInputType
+					== Enum.UserInputType.Touch
+			then
+				dragging = true
+
+				dragStart = input.Position
+				startPosition = self.Main.Position
+			end
+		end)
 	)
 
 	AddConnection(
 		self,
-
-		UserInputService.InputChanged:Connect(
-			function(input)
-				if not dragging then
-					return
-				end
-
-				if
-					input.UserInputType
-						~= Enum.UserInputType.MouseMovement
-
-					and input.UserInputType
-						~= Enum.UserInputType.Touch
-				then
-					return
-				end
-
-				local delta =
-					input.Position
-					- dragStart
-
-				self.Main.Position =
-					UDim2.new(
-						startPosition.X.Scale,
-
-						startPosition.X.Offset
-							+ delta.X,
-
-						startPosition.Y.Scale,
-
-						startPosition.Y.Offset
-							+ delta.Y
-					)
+		UserInputService.InputChanged:Connect(function(input)
+			if not dragging then
+				return
 			end
-		)
+
+			if
+				input.UserInputType
+					~= Enum.UserInputType.MouseMovement
+				and input.UserInputType
+					~= Enum.UserInputType.Touch
+			then
+				return
+			end
+
+			local delta =
+				input.Position - dragStart
+
+			self.Main.Position = UDim2.new(
+				startPosition.X.Scale,
+				startPosition.X.Offset + delta.X,
+
+				startPosition.Y.Scale,
+				startPosition.Y.Offset + delta.Y
+			)
+		end)
 	)
 
 	AddConnection(
 		self,
-
-		UserInputService.InputEnded:Connect(
-			function(input)
-				if
-					input == dragInput
-
-					or input.UserInputType
-						== Enum.UserInputType.MouseButton1
-				then
-					dragging = false
-					dragInput = nil
-				end
+		UserInputService.InputEnded:Connect(function(input)
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseButton1
+				or input.UserInputType
+					== Enum.UserInputType.Touch
+			then
+				dragging = false
 			end
-		)
+		end)
 	)
 end
 
@@ -1516,23 +1182,11 @@ function Window:_SetupResize()
 	local handle = New("ImageButton", {
 		Name = "ResizeHandle",
 
-		Size =
-			UDim2.fromOffset(
-				22,
-				22
-			),
+		Size = UDim2.fromOffset(22, 22),
 
-		AnchorPoint =
-			Vector2.new(
-				1,
-				1
-			),
+		AnchorPoint = Vector2.new(1, 1),
 
-		Position =
-			UDim2.fromScale(
-				1,
-				1
-			),
+		Position = UDim2.fromScale(1, 1),
 
 		BackgroundTransparency = 1,
 
@@ -1545,44 +1199,31 @@ function Window:_SetupResize()
 		Parent = self.Main,
 	})
 
-	self.ResizeHandle =
-		handle
-
-	--------------------------------------------------------
-	-- RESIZE DECORATION
-	--------------------------------------------------------
+	self.ResizeHandle = handle
 
 	for index = 0, 1 do
 		New("Frame", {
-			Size =
-				UDim2.fromOffset(
-					8 - index * 3,
-					1
-				),
+			Size = UDim2.fromOffset(
+				8 - index * 3,
+				1
+			),
 
-			AnchorPoint =
-				Vector2.new(
-					1,
-					1
-				),
+			AnchorPoint = Vector2.new(1, 1),
 
-			Position =
-				UDim2.new(
-					1,
-					-4,
+			Position = UDim2.new(
+				1,
+				-4,
 
-					1,
-					-(4 + index * 4)
-				),
+				1,
+				-(4 + index * 4)
+			),
 
 			Rotation = -45,
 
-			BackgroundColor3 =
-				Theme.SubText,
+			BackgroundColor3 = Theme.SubText,
 
 			BackgroundTransparency =
-				0.45
-				+ index * 0.1,
+				0.45 + index * 0.1,
 
 			BorderSizePixel = 0,
 
@@ -1592,120 +1233,85 @@ function Window:_SetupResize()
 		})
 	end
 
-	--------------------------------------------------------
-	-- RESIZE STATE
-	--------------------------------------------------------
-
 	local resizing = false
-
-	local resizeInput
-
 	local startMouse
-
 	local startSize
 
 	AddConnection(
 		self,
-
-		handle.InputBegan:Connect(
-			function(input)
-				if
-					self.Maximized
-					or self.Minimized
-				then
-					return
-				end
-
-				if
-					input.UserInputType
-						== Enum.UserInputType.MouseButton1
-
-					or input.UserInputType
-						== Enum.UserInputType.Touch
-				then
-					resizing = true
-
-					resizeInput =
-						input
-
-					startMouse =
-						input.Position
-
-					startSize =
-						self.Main.AbsoluteSize
-				end
+		handle.InputBegan:Connect(function(input)
+			if
+				self.Maximized
+				or self.Minimized
+			then
+				return
 			end
-		)
+
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseButton1
+				or input.UserInputType
+					== Enum.UserInputType.Touch
+			then
+				resizing = true
+
+				startMouse = input.Position
+				startSize = self.Main.AbsoluteSize
+			end
+		end)
 	)
 
 	AddConnection(
 		self,
-
-		UserInputService.InputChanged:Connect(
-			function(input)
-				if not resizing then
-					return
-				end
-
-				if
-					input.UserInputType
-						~= Enum.UserInputType.MouseMovement
-
-					and input.UserInputType
-						~= Enum.UserInputType.Touch
-				then
-					return
-				end
-
-				local delta =
-					input.Position
-					- startMouse
-
-				local width =
-					math.clamp(
-						startSize.X
-							+ delta.X,
-
-						self.MinSize.X,
-
-						self.MaxSize.X
-					)
-
-				local height =
-					math.clamp(
-						startSize.Y
-							+ delta.Y,
-
-						self.MinSize.Y,
-
-						self.MaxSize.Y
-					)
-
-				self.Main.Size =
-					UDim2.fromOffset(
-						width,
-						height
-					)
+		UserInputService.InputChanged:Connect(function(input)
+			if not resizing then
+				return
 			end
-		)
+
+			if
+				input.UserInputType
+					~= Enum.UserInputType.MouseMovement
+				and input.UserInputType
+					~= Enum.UserInputType.Touch
+			then
+				return
+			end
+
+			local delta =
+				input.Position - startMouse
+
+			local width = math.clamp(
+				startSize.X + delta.X,
+				self.MinSize.X,
+				self.MaxSize.X
+			)
+
+			local height = math.clamp(
+				startSize.Y + delta.Y,
+				self.MinSize.Y,
+				self.MaxSize.Y
+			)
+
+			self.Main.Size =
+				UDim2.fromOffset(
+					width,
+					height
+				)
+		end)
 	)
 
 	AddConnection(
 		self,
-
-		UserInputService.InputEnded:Connect(
-			function(input)
-				if
-					input == resizeInput
-
-					or input.UserInputType
-						== Enum.UserInputType.MouseButton1
-				then
-					resizing = false
-					resizeInput = nil
-				end
+		UserInputService.InputEnded:Connect(function(input)
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseButton1
+				or input.UserInputType
+					== Enum.UserInputType.Touch
+			then
+				resizing = false
 			end
-		)
+		end)
 	)
 end
 
@@ -1714,11 +1320,9 @@ end
 ------------------------------------------------------------
 
 function Window:SetTitle(value)
-	self.Title =
-		tostring(value)
+	self.Title = tostring(value)
 
-	self.TitleLabel.Text =
-		self.Title
+	self.TitleLabel.Text = self.Title
 
 	self._UpdateHeader()
 
@@ -1730,11 +1334,9 @@ end
 ------------------------------------------------------------
 
 function Window:SetVersion(value)
-	self.Version =
-		tostring(value)
+	self.Version = tostring(value)
 
-	self.VersionLabel.Text =
-		self.Version
+	self.VersionLabel.Text = self.Version
 
 	self._UpdateHeader()
 
@@ -1748,21 +1350,17 @@ end
 function Window:SetIcon(name)
 	self.Icon = name
 
-	local image =
-		GetIcon(name)
+	local image = GetIcon(name)
 
 	if not image then
-		self.IconHolder.Visible =
-			false
+		self.IconHolder.Visible = false
 
 		return self
 	end
 
-	self.IconHolder.Visible =
-		true
+	self.IconHolder.Visible = true
 
-	self.IconImage.Image =
-		image
+	self.IconImage.Image = image
 
 	return self
 end
@@ -1772,8 +1370,7 @@ end
 ------------------------------------------------------------
 
 function Window:SetTags(tags)
-	self.Tags =
-		tags or {}
+	self.Tags = tags or {}
 
 	for _, child in ipairs(
 		self.TagContainer:GetChildren()
@@ -1783,13 +1380,8 @@ function Window:SetTags(tags)
 		end
 	end
 
-	for _, tag in ipairs(
-		self.Tags
-	) do
-		CreateTag(
-			self,
-			tag
-		)
+	for _, tag in ipairs(self.Tags) do
+		CreateTag(self, tag)
 	end
 
 	self._UpdateHeader()
@@ -1798,15 +1390,9 @@ function Window:SetTags(tags)
 end
 
 function Window:AddTag(tag)
-	table.insert(
-		self.Tags,
-		tag
-	)
+	table.insert(self.Tags, tag)
 
-	CreateTag(
-		self,
-		tag
-	)
+	CreateTag(self, tag)
 
 	self._UpdateHeader()
 
@@ -1826,50 +1412,40 @@ function Window:ToggleMinimize()
 		self:ToggleMaximize()
 	end
 
-	self.Minimized =
-		not self.Minimized
+	self.Minimized = not self.Minimized
 
 	if self.Minimized then
-		self._MinimizedSize =
-			self.Main.Size
+		self._MinimizedSize = self.Main.Size
 
-		self.Content.Visible =
-			false
+		self.Content.Visible = false
 
 		if self.ResizeHandle then
-			self.ResizeHandle.Visible =
-				false
+			self.ResizeHandle.Visible = false
 		end
 
 		Tween(
 			self.Main,
 			0.28,
 			{
-				Size =
-					UDim2.new(
-						self.Main.Size.X.Scale,
+				Size = UDim2.new(
+					self.Main.Size.X.Scale,
+					self.Main.Size.X.Offset,
 
-						self.Main.Size.X.Offset,
-
-						0,
-
-						self.TopbarHeight
-					)
+					0,
+					self.TopbarHeight
+				)
 			}
 		)
-
 	else
-		self.Content.Visible =
-			true
+		self.Content.Visible = true
 
 		if self.ResizeHandle then
-			self.ResizeHandle.Visible =
-				true
+			self.ResizeHandle.Visible = true
 		end
 
 		Tween(
 			self.Main,
-			0.3,
+			0.30,
 			{
 				Size =
 					self._MinimizedSize
@@ -1894,68 +1470,52 @@ function Window:ToggleMaximize()
 		self:ToggleMinimize()
 	end
 
-	self.Maximized =
-		not self.Maximized
+	self.Maximized = not self.Maximized
 
 	if self.Maximized then
-		self._RestoreSize =
-			self.Main.Size
-
-		self._RestorePosition =
-			self.Main.Position
-
-		self._RestoreAnchor =
-			self.Main.AnchorPoint
+		self._RestoreSize = self.Main.Size
+		self._RestorePosition = self.Main.Position
+		self._RestoreAnchor = self.Main.AnchorPoint
 
 		if self.ResizeHandle then
-			self.ResizeHandle.Visible =
-				false
+			self.ResizeHandle.Visible = false
 		end
+
+		self.Main.AnchorPoint =
+			Vector2.new(0, 0)
 
 		Tween(
 			self.Main,
 			0.32,
 			{
-				AnchorPoint =
-					Vector2.new(
-						0,
-						0
-					),
-
 				Position =
 					UDim2.fromOffset(
 						8,
 						8
 					),
 
-				Size =
-					UDim2.new(
-						1,
-						-16,
+				Size = UDim2.new(
+					1,
+					-16,
 
-						1,
-						-16
-					),
+					1,
+					-16
+				),
 			}
 		)
-
 	else
 		if self.ResizeHandle then
-			self.ResizeHandle.Visible =
-				true
+			self.ResizeHandle.Visible = true
 		end
+
+		self.Main.AnchorPoint =
+			self._RestoreAnchor
+			or Vector2.new(0.5, 0.5)
 
 		Tween(
 			self.Main,
 			0.32,
 			{
-				AnchorPoint =
-					self._RestoreAnchor
-					or Vector2.new(
-						0.5,
-						0.5
-					),
-
 				Position =
 					self._RestorePosition
 					or self.Position,
@@ -2020,31 +1580,27 @@ function Window:Close()
 
 	self.Closed = true
 
+	local currentSize = self.Main.Size
+
 	Tween(
 		self.Main,
-		0.22,
+		0.20,
 		{
-			GroupTransparency = 1,
+			Size = UDim2.new(
+				currentSize.X.Scale,
+				currentSize.X.Offset - 14,
 
-			Size =
-				UDim2.new(
-					self.Main.Size.X.Scale,
+				currentSize.Y.Scale,
+				currentSize.Y.Offset - 14
+			),
 
-					self.Main.Size.X.Offset - 18,
-
-					self.Main.Size.Y.Scale,
-
-					self.Main.Size.Y.Offset - 18
-				),
+			BackgroundTransparency = 1,
 		}
 	)
 
-	task.delay(
-		0.23,
-		function()
-			self:Destroy()
-		end
-	)
+	task.delay(0.21, function()
+		self:Destroy()
+	end)
 end
 
 ------------------------------------------------------------
@@ -2060,13 +1616,10 @@ function Window:Destroy()
 		end)
 	end
 
-	table.clear(
-		self._Connections
-	)
+	table.clear(self._Connections)
 
 	if self.ScreenGui then
 		self.ScreenGui:Destroy()
-
 		self.ScreenGui = nil
 	end
 
@@ -2074,7 +1627,7 @@ function Window:Destroy()
 end
 
 ------------------------------------------------------------
--- PEBBLE API
+-- API
 ------------------------------------------------------------
 
 function Pebble:CreateWindow(config)
@@ -2084,10 +1637,6 @@ end
 function Pebble.new(config)
 	return Window.new(config)
 end
-
-------------------------------------------------------------
--- PUBLIC
-------------------------------------------------------------
 
 Pebble.Window = Window
 Pebble.Theme = Theme
