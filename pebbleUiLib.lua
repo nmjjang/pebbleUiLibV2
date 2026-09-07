@@ -1,13 +1,18 @@
 --[[
 	Pebble UI Library
-	Window Base v0.1.4
+	Window Base v0.1.5
 
 	Changes:
-	- Removed topbar separator line
-	- Removed hub icon background
-	- Removed hub icon stroke
-	- Same glass surface for whole window
-	- Rounded corners preserved
+	- No separator line
+	- No icon holder/background
+	- Topbar fully transparent
+	- Rounded glass surface
+	- Lucide controls
+	- Drag
+	- Resize
+	- Minimize
+	- Maximize
+	- Close
 ]]
 
 ------------------------------------------------------------
@@ -26,7 +31,7 @@ local LocalPlayer = Players.LocalPlayer
 ------------------------------------------------------------
 
 local Pebble = {}
-Pebble.Version = "0.1.4"
+Pebble.Version = "0.1.5"
 
 ------------------------------------------------------------
 -- THEME
@@ -106,13 +111,11 @@ end
 local function Tween(object, duration, properties)
 	local tween = TweenService:Create(
 		object,
-
 		TweenInfo.new(
 			duration,
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.Out
 		),
-
 		properties
 	)
 
@@ -123,7 +126,6 @@ end
 
 local function AddConnection(window, connection)
 	table.insert(window._Connections, connection)
-
 	return connection
 end
 
@@ -180,10 +182,6 @@ end
 ------------------------------------------------------------
 
 local function GetIcon(name)
-	if not name then
-		return nil
-	end
-
 	if typeof(name) ~= "string" then
 		return nil
 	end
@@ -203,8 +201,6 @@ local function GetIcon(name)
 end
 
 local function CreateIcon(name, size)
-	local image = GetIcon(name)
-
 	return New("ImageLabel", {
 		Name = "Icon",
 
@@ -215,7 +211,7 @@ local function CreateIcon(name, size)
 
 		BackgroundTransparency = 1,
 
-		Image = image or "",
+		Image = GetIcon(name) or "",
 
 		ImageColor3 = Theme.Icon,
 		ImageTransparency = 0,
@@ -276,19 +272,13 @@ local function CreateTag(window, data)
 		New("TextLabel", {
 			AutomaticSize = Enum.AutomaticSize.X,
 
-			Size = UDim2.new(
-				0,
-				0,
-				1,
-				0
-			),
+			Size = UDim2.new(0, 0, 1, 0),
 
 			BackgroundTransparency = 1,
 
 			Text = text,
 
 			TextColor3 = Theme.TagText,
-
 			TextTransparency = 0,
 
 			TextSize = 11,
@@ -342,12 +332,10 @@ local function CreateControlButton(
 	icon.ImageColor3 = Theme.SubText
 
 	icon.ZIndex = 21
-
 	icon.Parent = button
 
 	AddConnection(
 		window,
-
 		button.MouseEnter:Connect(function()
 			Tween(
 				button,
@@ -373,7 +361,6 @@ local function CreateControlButton(
 
 	AddConnection(
 		window,
-
 		button.MouseLeave:Connect(function()
 			Tween(
 				button,
@@ -470,8 +457,7 @@ function Window.new(config)
 		Size = self.Size,
 		Position = self.Position,
 
-		AnchorPoint =
-			Vector2.new(0.5, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
 
 		BackgroundTransparency = 1,
 
@@ -491,9 +477,7 @@ function Window.new(config)
 
 		Size = UDim2.fromScale(1, 1),
 
-		BackgroundColor3 =
-			Theme.Background,
-
+		BackgroundColor3 = Theme.Background,
 		BackgroundTransparency = 0.08,
 
 		BorderSizePixel = 0,
@@ -511,9 +495,7 @@ function Window.new(config)
 
 		New("UIStroke", {
 			Color = Theme.Stroke,
-
 			Transparency = 0.86,
-
 			Thickness = 1,
 		}),
 
@@ -550,8 +532,8 @@ function Window.new(config)
 	--------------------------------------------------------
 	-- TOPBAR
 	--
-	-- No background.
-	-- No separator.
+	-- 100% transparent.
+	-- No line. No stroke. No background.
 	--------------------------------------------------------
 
 	local topbar = New("Frame", {
@@ -580,7 +562,8 @@ function Window.new(config)
 	--------------------------------------------------------
 	-- HUB ICON
 	--
-	-- No holder background anymore.
+	-- Directly on the topbar.
+	-- No holder, no background, no stroke.
 	--------------------------------------------------------
 
 	local appIcon = CreateIcon(
@@ -596,7 +579,7 @@ function Window.new(config)
 	appIcon.Position =
 		UDim2.new(
 			0,
-			16,
+			17,
 			0.5,
 			0
 		)
@@ -606,11 +589,9 @@ function Window.new(config)
 
 	appIcon.ZIndex = 13
 
-	appIcon.Parent =
-		topbar
+	appIcon.Parent = topbar
 
-	self.IconImage =
-		appIcon
+	self.IconImage = appIcon
 
 	--------------------------------------------------------
 	-- HEADER
@@ -621,16 +602,17 @@ function Window.new(config)
 
 		Position =
 			UDim2.fromOffset(
-				46,
+				48,
 				0
 			),
 
-		Size = UDim2.new(
-			1,
-			-180,
-			1,
-			0
-		),
+		Size =
+			UDim2.new(
+				1,
+				-185,
+				1,
+				0
+			),
 
 		BackgroundTransparency = 1,
 
@@ -663,12 +645,13 @@ function Window.new(config)
 				0.5
 			),
 
-		Position = UDim2.new(
-			0,
-			0,
-			0.5,
-			0
-		),
+		Position =
+			UDim2.new(
+				0,
+				0,
+				0.5,
+				0
+			),
 
 		BackgroundTransparency = 1,
 
@@ -773,11 +756,7 @@ function Window.new(config)
 			VerticalAlignment =
 				Enum.VerticalAlignment.Center,
 
-			Padding =
-				UDim.new(
-					0,
-					5
-				),
+			Padding = UDim.new(0, 5),
 		}),
 	})
 
@@ -813,12 +792,10 @@ function Window.new(config)
 		end)
 	end
 
-	self._UpdateHeader =
-		UpdateHeader
+	self._UpdateHeader = UpdateHeader
 
 	AddConnection(
 		self,
-
 		title:GetPropertyChangedSignal(
 			"TextBounds"
 		):Connect(UpdateHeader)
@@ -826,7 +803,6 @@ function Window.new(config)
 
 	AddConnection(
 		self,
-
 		version:GetPropertyChangedSignal(
 			"TextBounds"
 		):Connect(UpdateHeader)
@@ -878,11 +854,7 @@ function Window.new(config)
 			VerticalAlignment =
 				Enum.VerticalAlignment.Center,
 
-			Padding =
-				UDim.new(
-					0,
-					3
-				),
+			Padding = UDim.new(0, 3),
 		}),
 	})
 
@@ -918,23 +890,13 @@ function Window.new(config)
 
 	closeButton.Parent = controls
 
-	self.MinimizeButton =
-		minimizeButton
+	self.MinimizeButton = minimizeButton
+	self.MaximizeButton = maximizeButton
+	self.CloseButton = closeButton
 
-	self.MaximizeButton =
-		maximizeButton
-
-	self.CloseButton =
-		closeButton
-
-	self.MinimizeIcon =
-		minimizeIcon
-
-	self.MaximizeIcon =
-		maximizeIcon
-
-	self.CloseIcon =
-		closeIcon
+	self.MinimizeIcon = minimizeIcon
+	self.MaximizeIcon = maximizeIcon
+	self.CloseIcon = closeIcon
 
 	--------------------------------------------------------
 	-- CONTENT
@@ -992,7 +954,6 @@ function Window.new(config)
 
 	AddConnection(
 		self,
-
 		minimizeButton.MouseButton1Click:Connect(function()
 			self:ToggleMinimize()
 		end)
@@ -1000,7 +961,6 @@ function Window.new(config)
 
 	AddConnection(
 		self,
-
 		maximizeButton.MouseButton1Click:Connect(function()
 			self:ToggleMaximize()
 		end)
@@ -1008,7 +968,6 @@ function Window.new(config)
 
 	AddConnection(
 		self,
-
 		closeButton.MouseButton1Click:Connect(function()
 			self:Close()
 		end)
@@ -1018,17 +977,15 @@ function Window.new(config)
 	-- INTRO
 	--------------------------------------------------------
 
-	local originalSize =
-		main.Size
+	local originalSize = main.Size
 
-	main.Size =
-		UDim2.new(
-			originalSize.X.Scale,
-			originalSize.X.Offset - 12,
+	main.Size = UDim2.new(
+		originalSize.X.Scale,
+		originalSize.X.Offset - 12,
 
-			originalSize.Y.Scale,
-			originalSize.Y.Offset - 12
-		)
+		originalSize.Y.Scale,
+		originalSize.Y.Offset - 12
+	)
 
 	Tween(
 		main,
@@ -1056,7 +1013,6 @@ function Window:_SetupDrag()
 
 	AddConnection(
 		self,
-
 		self.Topbar.InputBegan:Connect(function(input)
 			if self.Maximized then
 				return
@@ -1070,18 +1026,14 @@ function Window:_SetupDrag()
 			then
 				dragging = true
 
-				dragStart =
-					input.Position
-
-				startPosition =
-					self.Main.Position
+				dragStart = input.Position
+				startPosition = self.Main.Position
 			end
 		end)
 	)
 
 	AddConnection(
 		self,
-
 		UserInputService.InputChanged:Connect(function(input)
 			if not dragging then
 				return
@@ -1116,7 +1068,6 @@ function Window:_SetupDrag()
 
 	AddConnection(
 		self,
-
 		UserInputService.InputEnded:Connect(function(input)
 			if
 				input.UserInputType
@@ -1138,23 +1089,11 @@ function Window:_SetupResize()
 	local handle = New("ImageButton", {
 		Name = "ResizeHandle",
 
-		Size =
-			UDim2.fromOffset(
-				22,
-				22
-			),
+		Size = UDim2.fromOffset(22, 22),
 
-		AnchorPoint =
-			Vector2.new(
-				1,
-				1
-			),
+		AnchorPoint = Vector2.new(1, 1),
 
-		Position =
-			UDim2.fromScale(
-				1,
-				1
-			),
+		Position = UDim2.fromScale(1, 1),
 
 		BackgroundTransparency = 1,
 
@@ -1170,17 +1109,13 @@ function Window:_SetupResize()
 	self.ResizeHandle = handle
 
 	local resizing = false
-
 	local startMouse
 	local startSize
 
 	AddConnection(
 		self,
-
 		handle.InputBegan:Connect(function(input)
-			if self.Maximized
-				or self.Minimized
-			then
+			if self.Maximized or self.Minimized then
 				return
 			end
 
@@ -1192,18 +1127,14 @@ function Window:_SetupResize()
 			then
 				resizing = true
 
-				startMouse =
-					input.Position
-
-				startSize =
-					self.Main.AbsoluteSize
+				startMouse = input.Position
+				startSize = self.Main.AbsoluteSize
 			end
 		end)
 	)
 
 	AddConnection(
 		self,
-
 		UserInputService.InputChanged:Connect(function(input)
 			if not resizing then
 				return
@@ -1245,7 +1176,6 @@ function Window:_SetupResize()
 
 	AddConnection(
 		self,
-
 		UserInputService.InputEnded:Connect(function(input)
 			if
 				input.UserInputType
@@ -1265,9 +1195,7 @@ end
 
 function Window:SetTitle(value)
 	self.Title = tostring(value)
-
-	self.TitleLabel.Text =
-		self.Title
+	self.TitleLabel.Text = self.Title
 
 	self._UpdateHeader()
 
@@ -1280,9 +1208,7 @@ end
 
 function Window:SetVersion(value)
 	self.Version = tostring(value)
-
-	self.VersionLabel.Text =
-		self.Version
+	self.VersionLabel.Text = self.Version
 
 	self._UpdateHeader()
 
@@ -1296,12 +1222,10 @@ end
 function Window:SetIcon(name)
 	self.Icon = name
 
-	local image =
-		GetIcon(name)
+	local image = GetIcon(name)
 
 	if not image then
 		self.IconImage.Visible = false
-
 		return self
 	end
 
@@ -1358,41 +1282,35 @@ function Window:ToggleMinimize()
 		self:ToggleMaximize()
 	end
 
-	self.Minimized =
-		not self.Minimized
+	self.Minimized = not self.Minimized
 
 	if self.Minimized then
-		self._MinimizedSize =
-			self.Main.Size
+		self._MinimizedSize = self.Main.Size
 
-		self.Content.Visible =
-			false
+		self.Content.Visible = false
 
 		if self.ResizeHandle then
-			self.ResizeHandle.Visible =
-				false
+			self.ResizeHandle.Visible = false
 		end
 
 		Tween(
 			self.Main,
 			0.28,
 			{
-				Size =
-					UDim2.new(
-						self.Main.Size.X.Scale,
-						self.Main.Size.X.Offset,
+				Size = UDim2.new(
+					self.Main.Size.X.Scale,
+					self.Main.Size.X.Offset,
 
-						0,
-						self.TopbarHeight
-					)
+					0,
+					self.TopbarHeight
+				)
 			}
 		)
 	else
 		self.Content.Visible = true
 
 		if self.ResizeHandle then
-			self.ResizeHandle.Visible =
-				true
+			self.ResizeHandle.Visible = true
 		end
 
 		Tween(
@@ -1422,22 +1340,15 @@ function Window:ToggleMaximize()
 		self:ToggleMinimize()
 	end
 
-	self.Maximized =
-		not self.Maximized
+	self.Maximized = not self.Maximized
 
 	if self.Maximized then
-		self._RestoreSize =
-			self.Main.Size
-
-		self._RestorePosition =
-			self.Main.Position
-
-		self._RestoreAnchor =
-			self.Main.AnchorPoint
+		self._RestoreSize = self.Main.Size
+		self._RestorePosition = self.Main.Position
+		self._RestoreAnchor = self.Main.AnchorPoint
 
 		if self.ResizeHandle then
-			self.ResizeHandle.Visible =
-				false
+			self.ResizeHandle.Visible = false
 		end
 
 		self.Main.AnchorPoint =
@@ -1464,16 +1375,12 @@ function Window:ToggleMaximize()
 		)
 	else
 		if self.ResizeHandle then
-			self.ResizeHandle.Visible =
-				true
+			self.ResizeHandle.Visible = true
 		end
 
 		self.Main.AnchorPoint =
 			self._RestoreAnchor
-			or Vector2.new(
-				0.5,
-				0.5
-			)
+			or Vector2.new(0.5, 0.5)
 
 		Tween(
 			self.Main,
@@ -1498,9 +1405,7 @@ end
 ------------------------------------------------------------
 
 function Window:SetVisible(value)
-	self.ScreenGui.Enabled =
-		value == true
-
+	self.ScreenGui.Enabled = value == true
 	return self
 end
 
@@ -1523,8 +1428,7 @@ function Window:Close()
 
 	self.Closed = true
 
-	local currentSize =
-		self.Main.Size
+	local currentSize = self.Main.Size
 
 	Tween(
 		self.Main,
@@ -1549,12 +1453,9 @@ function Window:Close()
 		}
 	)
 
-	task.delay(
-		0.19,
-		function()
-			self:Destroy()
-		end
-	)
+	task.delay(0.19, function()
+		self:Destroy()
+	end)
 end
 
 ------------------------------------------------------------
@@ -1570,13 +1471,10 @@ function Window:Destroy()
 		end)
 	end
 
-	table.clear(
-		self._Connections
-	)
+	table.clear(self._Connections)
 
 	if self.ScreenGui then
 		self.ScreenGui:Destroy()
-
 		self.ScreenGui = nil
 	end
 
