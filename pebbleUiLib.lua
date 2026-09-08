@@ -1,3 +1,27 @@
+--[[
+	Pebble UI
+	Version: 0.3.0
+
+	Features:
+	- Window
+	- Glass background
+	- Custom background transparency
+	- Custom selected tab color
+	- Custom selected tab transparency
+	- Collapsible sidebar
+	- Sidebar toggle attached to sidebar edge
+	- Tabs
+	- Locked tabs
+	- Dividers
+	- Lucide icons
+	- Player headshot / DisplayName / Username
+	- Dragging
+	- Resize
+	- Minimize
+	- Maximize
+	- Close
+]]
+
 local Pebble = {
 	Version = "0.3.0"
 }
