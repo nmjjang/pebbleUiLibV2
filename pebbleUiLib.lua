@@ -1,30 +1,13 @@
 --[[
-	Pebble UI
-	Version: 0.3.0
-
-	Features:
-	- Window
-	- Glass background
-	- Custom background transparency
-	- Custom selected tab color
-	- Custom selected tab transparency
-	- Collapsible sidebar
-	- Sidebar toggle attached to sidebar edge
-	- Tabs
-	- Locked tabs
-	- Dividers
-	- Lucide icons
-	- Player headshot / DisplayName / Username
-	- Dragging
-	- Resize
-	- Minimize
-	- Maximize
-	- Close
+	Pebble UI Library
+	Version: 0.3.1
 ]]
 
 local Pebble = {
-	Version = "0.3.0"
+	Version = "0.3.1"
 }
+
+--// Services
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -33,7 +16,7 @@ local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
---// Lucide
+--// Lucide Icons
 
 local LucideIcons = {}
 
@@ -64,7 +47,6 @@ local function GetIcon(name)
 
 	if not icon then
 		warn("[Pebble] Lucide icon not found:", name)
-		return nil
 	end
 
 	return icon
@@ -83,12 +65,10 @@ local Theme = {
 	SubText = Color3.fromRGB(146, 147, 157),
 	MutedText = Color3.fromRGB(105, 106, 116),
 
-	Sidebar = Color3.fromRGB(17, 18, 20),
+	Sidebar = Color3.fromRGB(16, 17, 19),
 	SidebarHover = Color3.fromRGB(255, 255, 255),
-	SidebarSelected = Color3.fromRGB(255, 255, 255),
 
 	Accent = Color3.fromRGB(103, 76, 255),
-	AccentBright = Color3.fromRGB(124, 96, 255),
 
 	Icon = Color3.fromRGB(183, 184, 194),
 	IconSelected = Color3.fromRGB(245, 245, 247),
@@ -99,16 +79,18 @@ local Theme = {
 	UserBackground = Color3.fromRGB(255, 255, 255),
 
 	Close = Color3.fromRGB(235, 76, 76),
-	CloseIcon = Color3.fromRGB(255, 180, 180),
+	CloseIcon = Color3.fromRGB(255, 185, 185),
 }
 
 local Defaults = {
 	Title = "Pebble",
 	Version = "v0.3",
 	Icon = "sparkles",
+
 	Tags = {},
 
 	Size = UDim2.fromOffset(760, 500),
+
 	MinSize = Vector2.new(560, 360),
 	MaxSize = Vector2.new(1200, 800),
 
@@ -121,15 +103,16 @@ local Defaults = {
 
 	CornerRadius = 12,
 
-	BackgroundTransparency = 0.12,
-	SidebarTransparency = 0.16,
+	BackgroundTransparency = 0.28,
 
 	SelectColor = Theme.Accent,
-	SelectTransparency = 0.84,
+	SelectTransparency = 0.82,
 
 	Draggable = true,
 	Resizable = true,
 }
+
+--// Classes
 
 local Window = {}
 Window.__index = Window
@@ -140,13 +123,13 @@ Tab.__index = Tab
 --// Helpers
 
 local function New(className, properties)
-	local object = Instance.new(className)
+	local instance = Instance.new(className)
 
 	for property, value in pairs(properties or {}) do
-		object[property] = value
+		instance[property] = value
 	end
 
-	return object
+	return instance
 end
 
 local function Corner(parent, radius)
@@ -163,7 +146,8 @@ local function Stroke(parent, color, transparency, thickness)
 	local stroke = New("UIStroke", {
 		Color = color,
 		Transparency = transparency or 0,
-		Thickness = thickness or 1
+		Thickness = thickness or 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	})
 
 	stroke.Parent = parent
@@ -188,30 +172,34 @@ local function Tween(object, duration, properties)
 end
 
 local function CreateIcon(iconName, size)
-	local image = New("ImageLabel", {
+	return New("ImageLabel", {
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(size or 18, size or 18),
+
+		Size = UDim2.fromOffset(
+			size or 18,
+			size or 18
+		),
 
 		Image = GetIcon(iconName) or "",
+
 		ImageColor3 = Theme.Icon,
 
 		ScaleType = Enum.ScaleType.Fit
 	})
-
-	return image
 end
 
 local function CreateControlButton(iconName, parent)
 	local button = New("TextButton", {
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundColor3 = Color3.new(1, 1, 1),
 		BackgroundTransparency = 1,
 
 		Size = UDim2.fromOffset(32, 32),
 
 		Text = "",
+
 		AutoButtonColor = false,
 
-		ZIndex = 20
+		ZIndex = 30
 	})
 
 	Corner(button, 8)
@@ -220,8 +208,11 @@ local function CreateControlButton(iconName, parent)
 
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
+
 	icon.ImageColor3 = Theme.Icon
-	icon.ZIndex = 21
+
+	icon.ZIndex = 31
+
 	icon.Parent = button
 
 	button.MouseEnter:Connect(function()
@@ -250,16 +241,23 @@ function Pebble:CreateWindow(config)
 
 	self.Title = config.Title or Defaults.Title
 	self.Version = config.Version or Defaults.Version
+
 	self.Icon = config.Icon or Defaults.Icon
 	self.Tags = config.Tags or Defaults.Tags
 
 	self.Size = config.Size or Defaults.Size
+
 	self.MinSize = config.MinSize or Defaults.MinSize
 	self.MaxSize = config.MaxSize or Defaults.MaxSize
 
-	self.TopbarHeight = config.TopbarHeight or Defaults.TopbarHeight
+	self.TopbarHeight =
+		config.TopbarHeight
+		or Defaults.TopbarHeight
 
-	self.SidebarWidth = config.SidebarWidth or Defaults.SidebarWidth
+	self.SidebarWidth =
+		config.SidebarWidth
+		or Defaults.SidebarWidth
+
 	self.CollapsedSidebarWidth =
 		config.CollapsedSidebarWidth
 		or Defaults.CollapsedSidebarWidth
@@ -273,10 +271,11 @@ function Pebble:CreateWindow(config)
 		and math.clamp(config.BackgroundTransparency, 0, 1)
 		or Defaults.BackgroundTransparency
 
+	-- Por padrão usa EXATAMENTE a mesma transparência do fundo.
 	self.SidebarTransparency =
 		config.SidebarTransparency ~= nil
 		and math.clamp(config.SidebarTransparency, 0, 1)
-		or Defaults.SidebarTransparency
+		or self.BackgroundTransparency
 
 	self.SelectColor =
 		config.SelectColor
@@ -289,16 +288,16 @@ function Pebble:CreateWindow(config)
 
 	self.Draggable =
 		config.Draggable ~= false
-		and Defaults.Draggable
 
 	self.Resizable =
 		config.Resizable ~= false
-		and Defaults.Resizable
 
 	self.Tabs = {}
+
 	self.SelectedTab = nil
 
 	self.SidebarCollapsed = false
+
 	self.Minimized = false
 	self.Maximized = false
 
@@ -307,10 +306,16 @@ function Pebble:CreateWindow(config)
 	--// ScreenGui
 
 	local screenGui = New("ScreenGui", {
-		Name = "PebbleUI_" .. tostring(math.random(100000, 999999)),
+		Name = "PebbleUI_" .. tostring(
+			math.random(100000, 999999)
+		),
+
 		IgnoreGuiInset = true,
+
 		ResetOnSpawn = false,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+		ZIndexBehavior =
+			Enum.ZIndexBehavior.Sibling
 	})
 
 	local success = pcall(function()
@@ -318,7 +323,8 @@ function Pebble:CreateWindow(config)
 	end)
 
 	if not success then
-		screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+		screenGui.Parent =
+			LocalPlayer:WaitForChild("PlayerGui")
 	end
 
 	self.ScreenGui = screenGui
@@ -329,7 +335,11 @@ function Pebble:CreateWindow(config)
 		Name = "Main",
 
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = config.Position or Defaults.Position,
+
+		Position =
+			config.Position
+			or Defaults.Position,
+
 		Size = self.Size,
 
 		BackgroundTransparency = 1,
@@ -341,29 +351,61 @@ function Pebble:CreateWindow(config)
 
 	self.Main = main
 
-	--// Main Surface
+	--[[
+		CLIP ROOT
+
+		Toda a Window visual fica dentro daqui.
+
+		Isso impede Sidebar, Content e Topbar de
+		desenharem fora dos cantos arredondados.
+	]]
+
+	local clipRoot = New("CanvasGroup", {
+		Name = "ClipRoot",
+
+		Size = UDim2.fromScale(1, 1),
+
+		BackgroundTransparency = 1,
+
+		BorderSizePixel = 0,
+
+		GroupTransparency = 0,
+
+		ClipsDescendants = true,
+
+		ZIndex = 1
+	})
+
+	Corner(
+		clipRoot,
+		self.CornerRadius
+	)
+
+	clipRoot.Parent = main
+
+	self.ClipRoot = clipRoot
+
+	--// Background principal
 
 	local surface = New("Frame", {
 		Name = "Surface",
 
 		Size = UDim2.fromScale(1, 1),
 
-		BackgroundColor3 = Theme.Background,
-		BackgroundTransparency = self.BackgroundTransparency,
+		BackgroundColor3 =
+			Theme.Background,
+
+		BackgroundTransparency =
+			self.BackgroundTransparency,
 
 		BorderSizePixel = 0,
 
 		ZIndex = 1
 	})
 
-	Corner(surface, self.CornerRadius)
+	surface.Parent = clipRoot
 
-	Stroke(
-		surface,
-		Theme.Stroke,
-		0.90,
-		1
-	)
+	self.Surface = surface
 
 	local gradient = New("UIGradient", {
 		Color = ColorSequence.new({
@@ -382,9 +424,17 @@ function Pebble:CreateWindow(config)
 	})
 
 	gradient.Parent = surface
-	surface.Parent = main
 
-	self.Surface = surface
+	--// Borda externa
+
+	local outerStroke = Stroke(
+		clipRoot,
+		Theme.Stroke,
+		0.87,
+		1
+	)
+
+	self.OuterStroke = outerStroke
 
 	--// Topbar
 
@@ -400,30 +450,37 @@ function Pebble:CreateWindow(config)
 
 		BackgroundTransparency = 1,
 
-		ZIndex = 10
+		ZIndex = 20
 	})
 
-	topbar.Parent = main
+	topbar.Parent = clipRoot
+
 	self.Topbar = topbar
 
 	--// App icon
 
-	local appIcon = CreateIcon(self.Icon, 20)
+	local appIcon = CreateIcon(
+		self.Icon,
+		20
+	)
 
 	appIcon.Name = "AppIcon"
 
-	appIcon.AnchorPoint = Vector2.new(0, 0.5)
+	appIcon.AnchorPoint =
+		Vector2.new(0, 0.5)
 
-	appIcon.Position = UDim2.new(
-		0,
-		17,
-		0.5,
-		0
-	)
+	appIcon.Position =
+		UDim2.new(
+			0,
+			17,
+			0.5,
+			0
+		)
 
-	appIcon.ImageColor3 = Theme.Text
+	appIcon.ImageColor3 =
+		Theme.Text
 
-	appIcon.ZIndex = 13
+	appIcon.ZIndex = 22
 
 	appIcon.Parent = topbar
 
@@ -436,16 +493,21 @@ function Pebble:CreateWindow(config)
 
 		BackgroundTransparency = 1,
 
-		Position = UDim2.fromOffset(48, 0),
+		Position =
+			UDim2.fromOffset(
+				48,
+				0
+			),
 
-		Size = UDim2.new(
-			1,
-			-250,
-			1,
-			0
-		),
+		Size =
+			UDim2.new(
+				1,
+				-250,
+				1,
+				0
+			),
 
-		ZIndex = 12
+		ZIndex = 21
 	})
 
 	header.Parent = topbar
@@ -455,33 +517,40 @@ function Pebble:CreateWindow(config)
 
 		BackgroundTransparency = 1,
 
-		AnchorPoint = Vector2.new(0, 0.5),
+		AnchorPoint =
+			Vector2.new(0, 0.5),
 
-		Position = UDim2.new(
-			0,
-			0,
-			0.5,
-			-7
-		),
+		Position =
+			UDim2.new(
+				0,
+				0,
+				0.5,
+				-7
+			),
 
-		Size = UDim2.new(
-			0,
-			0,
-			0,
-			20
-		),
+		AutomaticSize =
+			Enum.AutomaticSize.X,
 
-		AutomaticSize = Enum.AutomaticSize.X,
+		Size =
+			UDim2.fromOffset(
+				0,
+				20
+			),
 
-		Font = Enum.Font.GothamMedium,
+		Font =
+			Enum.Font.GothamMedium,
 
 		Text = self.Title,
-		TextColor3 = Theme.Text,
+
+		TextColor3 =
+			Theme.Text,
+
 		TextSize = 14,
 
-		TextXAlignment = Enum.TextXAlignment.Left,
+		TextXAlignment =
+			Enum.TextXAlignment.Left,
 
-		ZIndex = 13
+		ZIndex = 22
 	})
 
 	title.Parent = header
@@ -491,33 +560,39 @@ function Pebble:CreateWindow(config)
 
 		BackgroundTransparency = 1,
 
-		AnchorPoint = Vector2.new(0, 0.5),
+		AnchorPoint =
+			Vector2.new(0, 0.5),
 
-		Position = UDim2.new(
-			0,
-			0,
-			0.5,
-			11
-		),
+		Position =
+			UDim2.new(
+				0,
+				0,
+				0.5,
+				11
+			),
 
-		Size = UDim2.new(
-			0,
-			0,
-			0,
-			16
-		),
+		AutomaticSize =
+			Enum.AutomaticSize.X,
 
-		AutomaticSize = Enum.AutomaticSize.X,
+		Size =
+			UDim2.fromOffset(
+				0,
+				16
+			),
 
 		Font = Enum.Font.Gotham,
 
 		Text = self.Version,
-		TextColor3 = Theme.MutedText,
-		TextSize = 11,
 
-		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 =
+			Theme.MutedText,
 
-		ZIndex = 13
+		TextSize = 10,
+
+		TextXAlignment =
+			Enum.TextXAlignment.Left,
+
+		ZIndex = 22
 	})
 
 	version.Parent = header
@@ -529,50 +604,74 @@ function Pebble:CreateWindow(config)
 
 		BackgroundTransparency = 1,
 
-		Position = UDim2.fromOffset(115, 18),
+		Position =
+			UDim2.fromOffset(
+				115,
+				18
+			),
 
-		Size = UDim2.new(
-			1,
-			-115,
-			0,
-			22
-		),
+		Size =
+			UDim2.new(
+				1,
+				-115,
+				0,
+				22
+			),
 
-		ZIndex = 13
+		ZIndex = 22
 	})
 
 	tagHolder.Parent = header
 
 	local tagLayout = New("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
+		FillDirection =
+			Enum.FillDirection.Horizontal,
 
-		Padding = UDim.new(0, 6),
+		Padding =
+			UDim.new(0, 6),
 
-		VerticalAlignment = Enum.VerticalAlignment.Center,
+		VerticalAlignment =
+			Enum.VerticalAlignment.Center,
 
-		SortOrder = Enum.SortOrder.LayoutOrder
+		SortOrder =
+			Enum.SortOrder.LayoutOrder
 	})
 
 	tagLayout.Parent = tagHolder
 
 	for index, tagText in ipairs(self.Tags) do
 		local tag = New("TextLabel", {
-			BackgroundColor3 = Theme.Tag,
-			BackgroundTransparency = 0.92,
+			BackgroundColor3 =
+				Theme.Tag,
 
-			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundTransparency =
+				0.92,
 
-			Size = UDim2.fromOffset(0, 20),
+			AutomaticSize =
+				Enum.AutomaticSize.X,
 
-			Font = Enum.Font.GothamMedium,
+			Size =
+				UDim2.fromOffset(
+					0,
+					20
+				),
 
-			Text = "  " .. tostring(tagText) .. "  ",
-			TextColor3 = Theme.TagText,
+			Font =
+				Enum.Font.GothamMedium,
+
+			Text =
+				"  "
+				.. tostring(tagText)
+				.. "  ",
+
+			TextColor3 =
+				Theme.TagText,
+
 			TextSize = 10,
 
 			LayoutOrder = index,
 
-			ZIndex = 14
+			ZIndex = 23
 		})
 
 		Corner(tag, 6)
@@ -580,79 +679,118 @@ function Pebble:CreateWindow(config)
 		tag.Parent = tagHolder
 	end
 
-	--// Window controls
+	--// Controls
 
 	local controls = New("Frame", {
 		Name = "Controls",
 
-		AnchorPoint = Vector2.new(1, 0.5),
+		AnchorPoint =
+			Vector2.new(1, 0.5),
 
-		Position = UDim2.new(
-			1,
-			-12,
-			0.5,
-			0
-		),
+		Position =
+			UDim2.new(
+				1,
+				-12,
+				0.5,
+				0
+			),
 
-		Size = UDim2.fromOffset(
-			104,
-			32
-		),
+		Size =
+			UDim2.fromOffset(
+				104,
+				32
+			),
 
 		BackgroundTransparency = 1,
 
-		ZIndex = 20
+		ZIndex = 30
 	})
 
 	controls.Parent = topbar
 
 	local controlLayout = New("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
+		FillDirection =
+			Enum.FillDirection.Horizontal,
 
-		HorizontalAlignment = Enum.HorizontalAlignment.Right,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
+		HorizontalAlignment =
+			Enum.HorizontalAlignment.Right,
 
-		Padding = UDim.new(0, 4),
+		VerticalAlignment =
+			Enum.VerticalAlignment.Center,
 
-		SortOrder = Enum.SortOrder.LayoutOrder
+		Padding =
+			UDim.new(0, 4),
+
+		SortOrder =
+			Enum.SortOrder.LayoutOrder
 	})
 
 	controlLayout.Parent = controls
 
-	local minimizeButton, minimizeIcon =
-		CreateControlButton("minus", controls)
+	local minimizeButton =
+		CreateControlButton(
+			"minus",
+			controls
+		)
 
 	minimizeButton.LayoutOrder = 1
 
-	local maximizeButton, maximizeIcon =
-		CreateControlButton("square", controls)
+	local maximizeButton =
+		CreateControlButton(
+			"square",
+			controls
+		)
 
 	maximizeButton.LayoutOrder = 2
 
 	local closeButton, closeIcon =
-		CreateControlButton("x", controls)
+		CreateControlButton(
+			"x",
+			controls
+		)
 
 	closeButton.LayoutOrder = 3
 
 	closeButton.MouseEnter:Connect(function()
-		Tween(closeButton, 0.15, {
-			BackgroundColor3 = Theme.Close,
-			BackgroundTransparency = 0.78
-		})
+		Tween(
+			closeButton,
+			0.15,
+			{
+				BackgroundColor3 =
+					Theme.Close,
 
-		Tween(closeIcon, 0.15, {
-			ImageColor3 = Theme.CloseIcon
-		})
+				BackgroundTransparency =
+					0.78
+			}
+		)
+
+		Tween(
+			closeIcon,
+			0.15,
+			{
+				ImageColor3 =
+					Theme.CloseIcon
+			}
+		)
 	end)
 
 	closeButton.MouseLeave:Connect(function()
-		Tween(closeButton, 0.15, {
-			BackgroundTransparency = 1
-		})
+		Tween(
+			closeButton,
+			0.15,
+			{
+				BackgroundTransparency = 1
+			}
+		)
 
-		Tween(closeIcon, 0.15, {
-			ImageColor3 = Theme.Icon
-		})
+		Tween(
+			closeIcon,
+			0.15,
+			{
+				ImageColor3 =
+					Theme.Icon
+			}
+		)
 	end)
 
 	--// Sidebar
@@ -660,84 +798,157 @@ function Pebble:CreateWindow(config)
 	local sidebar = New("Frame", {
 		Name = "Sidebar",
 
-		Position = UDim2.fromOffset(
-			0,
-			self.TopbarHeight
-		),
+		Position =
+			UDim2.fromOffset(
+				0,
+				self.TopbarHeight
+			),
 
-		Size = UDim2.new(
-			0,
-			self.SidebarWidth,
-			1,
-			-self.TopbarHeight
-		),
+		Size =
+			UDim2.new(
+				0,
+				self.SidebarWidth,
+				1,
+				-self.TopbarHeight
+			),
 
-		BackgroundColor3 = Theme.Sidebar,
-		BackgroundTransparency = self.SidebarTransparency,
+		BackgroundTransparency = 1,
 
 		BorderSizePixel = 0,
 
 		ClipsDescendants = false,
 
-		ZIndex = 5
+		ZIndex = 10
 	})
 
-	sidebar.Parent = main
+	sidebar.Parent = clipRoot
+
 	self.Sidebar = sidebar
 
-	--// Sidebar right border
+	--[[
+		Sidebar Glass
+
+		A própria Sidebar não desenha fundo.
+
+		Esse frame interno usa a transparência configurada,
+		mas continua preso ao ClipRoot arredondado.
+	]]
+
+	local sidebarGlass = New("Frame", {
+		Name = "SidebarGlass",
+
+		Size = UDim2.fromScale(1, 1),
+
+		BackgroundColor3 =
+			Theme.Sidebar,
+
+		BackgroundTransparency =
+			self.SidebarTransparency,
+
+		BorderSizePixel = 0,
+
+		ZIndex = 10
+	})
+
+	sidebarGlass.Parent = sidebar
+
+	self.SidebarGlass = sidebarGlass
+
+	-- leve gradiente na sidebar
+
+	local sidebarGradient = New("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				Color3.fromRGB(
+					23,
+					24,
+					27
+				)
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				Color3.fromRGB(
+					14,
+					15,
+					17
+				)
+			)
+		}),
+
+		Rotation = 90
+	})
+
+	sidebarGradient.Parent =
+		sidebarGlass
+
+	--// Linha vertical
 
 	local sidebarLine = New("Frame", {
 		Name = "SidebarLine",
 
-		AnchorPoint = Vector2.new(1, 0),
+		AnchorPoint =
+			Vector2.new(1, 0),
 
-		Position = UDim2.new(
-			1,
-			0,
-			0,
-			0
-		),
+		Position =
+			UDim2.new(
+				1,
+				0,
+				0,
+				0
+			),
 
-		Size = UDim2.new(
-			0,
-			1,
-			1,
-			0
-		),
+		Size =
+			UDim2.new(
+				0,
+				1,
+				1,
+				0
+			),
 
-		BackgroundColor3 = Theme.Stroke,
-		BackgroundTransparency = 0.93,
+		BackgroundColor3 =
+			Theme.Stroke,
+
+		BackgroundTransparency =
+			0.94,
 
 		BorderSizePixel = 0,
 
-		ZIndex = 6
+		ZIndex = 14
 	})
 
 	sidebarLine.Parent = sidebar
 
-	--// Sidebar Toggle
-	--// IMPORTANT: child of sidebar, so it follows it automatically
+	self.SidebarLine = sidebarLine
 
-	local sidebarButton = New("TextButton", {
+	--// Sidebar Toggle
+
+	local sidebarToggle = New("TextButton", {
 		Name = "SidebarToggle",
 
-		AnchorPoint = Vector2.new(0.5, 0),
+		AnchorPoint =
+			Vector2.new(0.5, 0),
 
-		Position = UDim2.new(
-			1,
-			0,
-			0,
-			10
-		),
+		Position =
+			UDim2.new(
+				1,
+				0,
+				0,
+				10
+			),
 
-		Size = UDim2.fromOffset(
-			28,
-			28
-		),
+		Size =
+			UDim2.fromOffset(
+				28,
+				28
+			),
 
-		BackgroundColor3 = Theme.BackgroundTop,
-		BackgroundTransparency = 0.08,
+		BackgroundColor3 =
+			Theme.BackgroundTop,
+
+		BackgroundTransparency =
+			0.12,
 
 		BorderSizePixel = 0,
 
@@ -748,55 +959,84 @@ function Pebble:CreateWindow(config)
 		ZIndex = 40
 	})
 
-	Corner(sidebarButton, 8)
+	Corner(sidebarToggle, 8)
 
 	Stroke(
-		sidebarButton,
+		sidebarToggle,
 		Theme.Stroke,
-		0.88,
+		0.86,
 		1
 	)
 
-	sidebarButton.Parent = sidebar
+	sidebarToggle.Parent = sidebar
 
-	local sidebarButtonIcon =
-		CreateIcon("panel-left-close", 14)
+	local sidebarToggleIcon =
+		CreateIcon(
+			"panel-left-close",
+			14
+		)
 
-	sidebarButtonIcon.AnchorPoint =
+	sidebarToggleIcon.AnchorPoint =
 		Vector2.new(0.5, 0.5)
 
-	sidebarButtonIcon.Position =
-		UDim2.fromScale(0.5, 0.5)
+	sidebarToggleIcon.Position =
+		UDim2.fromScale(
+			0.5,
+			0.5
+		)
 
-	sidebarButtonIcon.ImageColor3 =
+	sidebarToggleIcon.ImageColor3 =
 		Theme.Icon
 
-	sidebarButtonIcon.ZIndex = 41
+	sidebarToggleIcon.ZIndex = 41
 
-	sidebarButtonIcon.Parent =
-		sidebarButton
+	sidebarToggleIcon.Parent =
+		sidebarToggle
 
-	self.SidebarButton = sidebarButton
-	self.SidebarButtonIcon = sidebarButtonIcon
+	self.SidebarToggle =
+		sidebarToggle
 
-	sidebarButton.MouseEnter:Connect(function()
-		Tween(sidebarButton, 0.15, {
-			BackgroundTransparency = 0
-		})
+	self.SidebarToggleIcon =
+		sidebarToggleIcon
 
-		Tween(sidebarButtonIcon, 0.15, {
-			ImageColor3 = Theme.Text
-		})
+	sidebarToggle.MouseEnter:Connect(function()
+		Tween(
+			sidebarToggle,
+			0.15,
+			{
+				BackgroundTransparency =
+					0.02
+			}
+		)
+
+		Tween(
+			sidebarToggleIcon,
+			0.15,
+			{
+				ImageColor3 =
+					Theme.Text
+			}
+		)
 	end)
 
-	sidebarButton.MouseLeave:Connect(function()
-		Tween(sidebarButton, 0.15, {
-			BackgroundTransparency = 0.08
-		})
+	sidebarToggle.MouseLeave:Connect(function()
+		Tween(
+			sidebarToggle,
+			0.15,
+			{
+				BackgroundTransparency =
+					0.12
+			}
+		)
 
-		Tween(sidebarButtonIcon, 0.15, {
-			ImageColor3 = Theme.Icon
-		})
+		Tween(
+			sidebarToggleIcon,
+			0.15,
+			{
+				ImageColor3 =
+					Theme.Icon
+			}
+		)
 	end)
 
 	--// Tab Scroller
@@ -804,82 +1044,100 @@ function Pebble:CreateWindow(config)
 	local tabScroller = New("ScrollingFrame", {
 		Name = "Tabs",
 
-		Position = UDim2.fromOffset(
-			8,
-			8
-		),
+		Position =
+			UDim2.fromOffset(
+				8,
+				8
+			),
 
-		Size = UDim2.new(
-			1,
-			-16,
-			1,
-			-88
-		),
+		Size =
+			UDim2.new(
+				1,
+				-16,
+				1,
+				-88
+			),
 
 		BackgroundTransparency = 1,
 
 		BorderSizePixel = 0,
 
-		CanvasSize = UDim2.fromOffset(0, 0),
+		CanvasSize =
+			UDim2.fromOffset(0, 0),
 
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		AutomaticCanvasSize =
+			Enum.AutomaticSize.Y,
 
 		ScrollBarThickness = 0,
 
-		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollingDirection =
+			Enum.ScrollingDirection.Y,
 
 		ClipsDescendants = true,
 
-		ZIndex = 7
+		ZIndex = 15
 	})
 
 	tabScroller.Parent = sidebar
+
 	self.TabScroller = tabScroller
 
 	local tabLayout = New("UIListLayout", {
 		Padding = UDim.new(0, 4),
 
-		SortOrder = Enum.SortOrder.LayoutOrder
+		SortOrder =
+			Enum.SortOrder.LayoutOrder
 	})
 
 	tabLayout.Parent = tabScroller
 
 	self.TabLayout = tabLayout
 
-	--// Player panel
+	--// User panel
 
 	local userPanel = New("Frame", {
 		Name = "UserPanel",
 
-		AnchorPoint = Vector2.new(0, 1),
+		AnchorPoint =
+			Vector2.new(0, 1),
 
-		Position = UDim2.new(
-			0,
-			8,
-			1,
-			-8
-		),
+		Position =
+			UDim2.new(
+				0,
+				8,
+				1,
+				-8
+			),
 
-		Size = UDim2.new(
-			1,
-			-16,
-			0,
-			64
-		),
+		Size =
+			UDim2.new(
+				1,
+				-16,
+				0,
+				64
+			),
 
 		BackgroundColor3 =
 			Theme.UserBackground,
 
-		BackgroundTransparency = 0.94,
+		BackgroundTransparency =
+			0.94,
 
 		BorderSizePixel = 0,
 
 		ClipsDescendants = true,
 
-		ZIndex = 8
+		ZIndex = 16
 	})
 
 	Corner(userPanel, 10)
+
+	Stroke(
+		userPanel,
+		Theme.Stroke,
+		0.94,
+		1
+	)
 
 	userPanel.Parent = sidebar
 
@@ -888,22 +1146,22 @@ function Pebble:CreateWindow(config)
 	local avatar = New("ImageLabel", {
 		Name = "Avatar",
 
-		AnchorPoint = Vector2.new(
-			0,
-			0.5
-		),
+		AnchorPoint =
+			Vector2.new(0, 0.5),
 
-		Position = UDim2.new(
-			0,
-			11,
-			0.5,
-			0
-		),
+		Position =
+			UDim2.new(
+				0,
+				11,
+				0.5,
+				0
+			),
 
-		Size = UDim2.fromOffset(
-			38,
-			38
-		),
+		Size =
+			UDim2.fromOffset(
+				38,
+				38
+			),
 
 		BackgroundColor3 =
 			Theme.BackgroundTop,
@@ -914,12 +1172,13 @@ function Pebble:CreateWindow(config)
 
 		Image = "",
 
-		ZIndex = 9
+		ZIndex = 17
 	})
 
 	Corner(avatar, 19)
 
 	avatar.Parent = userPanel
+
 	self.UserAvatar = avatar
 
 	task.spawn(function()
@@ -942,22 +1201,29 @@ function Pebble:CreateWindow(config)
 
 		BackgroundTransparency = 1,
 
-		Position = UDim2.fromOffset(
-			59,
-			13
-		),
+		Position =
+			UDim2.fromOffset(
+				59,
+				13
+			),
 
-		Size = UDim2.new(
-			1,
-			-70,
-			0,
-			18
-		),
+		Size =
+			UDim2.new(
+				1,
+				-70,
+				0,
+				18
+			),
 
-		Font = Enum.Font.GothamMedium,
+		Font =
+			Enum.Font.GothamMedium,
 
-		Text = LocalPlayer.DisplayName,
-		TextColor3 = Theme.Text,
+		Text =
+			LocalPlayer.DisplayName,
+
+		TextColor3 =
+			Theme.Text,
+
 		TextSize = 12,
 
 		TextXAlignment =
@@ -966,7 +1232,7 @@ function Pebble:CreateWindow(config)
 		TextTruncate =
 			Enum.TextTruncate.AtEnd,
 
-		ZIndex = 9
+		ZIndex = 17
 	})
 
 	displayName.Parent = userPanel
@@ -976,22 +1242,29 @@ function Pebble:CreateWindow(config)
 
 		BackgroundTransparency = 1,
 
-		Position = UDim2.fromOffset(
-			59,
-			33
-		),
+		Position =
+			UDim2.fromOffset(
+				59,
+				33
+			),
 
-		Size = UDim2.new(
-			1,
-			-70,
-			0,
-			16
-		),
+		Size =
+			UDim2.new(
+				1,
+				-70,
+				0,
+				16
+			),
 
-		Font = Enum.Font.Gotham,
+		Font =
+			Enum.Font.Gotham,
 
-		Text = "@" .. LocalPlayer.Name,
-		TextColor3 = Theme.SubText,
+		Text =
+			"@" .. LocalPlayer.Name,
+
+		TextColor3 =
+			Theme.SubText,
+
 		TextSize = 10,
 
 		TextXAlignment =
@@ -1000,47 +1273,54 @@ function Pebble:CreateWindow(config)
 		TextTruncate =
 			Enum.TextTruncate.AtEnd,
 
-		ZIndex = 9
+		ZIndex = 17
 	})
 
 	username.Parent = userPanel
 
-	self.DisplayNameLabel = displayName
-	self.UsernameLabel = username
+	self.DisplayNameLabel =
+		displayName
+
+	self.UsernameLabel =
+		username
 
 	--// Content
 
 	local content = New("Frame", {
 		Name = "Content",
 
-		Position = UDim2.fromOffset(
-			self.SidebarWidth,
-			self.TopbarHeight
-		),
+		Position =
+			UDim2.fromOffset(
+				self.SidebarWidth,
+				self.TopbarHeight
+			),
 
-		Size = UDim2.new(
-			1,
-			-self.SidebarWidth,
-			1,
-			-self.TopbarHeight
-		),
+		Size =
+			UDim2.new(
+				1,
+				-self.SidebarWidth,
+				1,
+				-self.TopbarHeight
+			),
 
 		BackgroundTransparency = 1,
 
 		ClipsDescendants = true,
 
-		ZIndex = 4
+		ZIndex = 8
 	})
 
-	content.Parent = main
+	content.Parent = clipRoot
+
 	self.Content = content
 
-	--// Sidebar animation
+	--// Sidebar collapse
 
 	function self:SetSidebarCollapsed(collapsed)
-		self.SidebarCollapsed = collapsed == true
+		self.SidebarCollapsed =
+			collapsed == true
 
-		local targetWidth =
+		local width =
 			self.SidebarCollapsed
 			and self.CollapsedSidebarWidth
 			or self.SidebarWidth
@@ -1049,12 +1329,13 @@ function Pebble:CreateWindow(config)
 			self.Sidebar,
 			0.38,
 			{
-				Size = UDim2.new(
-					0,
-					targetWidth,
-					1,
-					-self.TopbarHeight
-				)
+				Size =
+					UDim2.new(
+						0,
+						width,
+						1,
+						-self.TopbarHeight
+					)
 			}
 		)
 
@@ -1062,32 +1343,35 @@ function Pebble:CreateWindow(config)
 			self.Content,
 			0.38,
 			{
-				Position = UDim2.fromOffset(
-					targetWidth,
-					self.TopbarHeight
-				),
+				Position =
+					UDim2.fromOffset(
+						width,
+						self.TopbarHeight
+					),
 
-				Size = UDim2.new(
-					1,
-					-targetWidth,
-					1,
-					-self.TopbarHeight
-				)
+				Size =
+					UDim2.new(
+						1,
+						-width,
+						1,
+						-self.TopbarHeight
+					)
 			}
 		)
 
-		self.SidebarButtonIcon.Image =
+		self.SidebarToggleIcon.Image =
 			GetIcon(
 				self.SidebarCollapsed
 				and "panel-left-open"
 				or "panel-left-close"
-			) or ""
+			)
+			or ""
 
 		for _, tab in ipairs(self.Tabs) do
 			if tab.TitleLabel then
 				Tween(
 					tab.TitleLabel,
-					0.22,
+					0.2,
 					{
 						TextTransparency =
 							self.SidebarCollapsed
@@ -1100,7 +1384,7 @@ function Pebble:CreateWindow(config)
 			if tab.LockIcon then
 				Tween(
 					tab.LockIcon,
-					0.22,
+					0.2,
 					{
 						ImageTransparency =
 							self.SidebarCollapsed
@@ -1133,71 +1417,85 @@ function Pebble:CreateWindow(config)
 			}
 		)
 
-		if self.SidebarCollapsed then
-			Tween(
-				self.UserAvatar,
-				0.38,
-				{
-					Position = UDim2.new(
+		Tween(
+			self.UserAvatar,
+			0.36,
+			{
+				Position =
+					self.SidebarCollapsed
+					and UDim2.new(
 						0.5,
 						-19,
 						0.5,
 						0
 					)
-				}
-			)
-		else
-			Tween(
-				self.UserAvatar,
-				0.38,
-				{
-					Position = UDim2.new(
+					or UDim2.new(
 						0,
 						11,
 						0.5,
 						0
 					)
-				}
-			)
-		end
+			}
+		)
 	end
 
-	sidebarButton.MouseButton1Click:Connect(function()
+	sidebarToggle.MouseButton1Click:Connect(function()
 		self:SetSidebarCollapsed(
 			not self.SidebarCollapsed
 		)
 	end)
 
+	--// Close
+
+	closeButton.MouseButton1Click:Connect(function()
+		Tween(
+			main,
+			0.18,
+			{
+				Size =
+					UDim2.new(
+						main.Size.X.Scale,
+						main.Size.X.Offset - 18,
+
+						main.Size.Y.Scale,
+						main.Size.Y.Offset - 18
+					)
+			}
+		)
+
+		task.delay(0.18, function()
+			screenGui:Destroy()
+		end)
+	end)
+
 	--// Minimize
 
-	local normalSize = self.Size
+	local normalSize = main.Size
 
 	minimizeButton.MouseButton1Click:Connect(function()
-		self.Minimized = not self.Minimized
+		self.Minimized =
+			not self.Minimized
 
 		if self.Minimized then
+			normalSize = main.Size
+
 			Tween(
 				main,
-				0.32,
+				0.3,
 				{
-					Size = UDim2.new(
-						normalSize.X.Scale,
-						normalSize.X.Offset,
-						0,
-						self.TopbarHeight
-					)
+					Size =
+						UDim2.new(
+							normalSize.X.Scale,
+							normalSize.X.Offset,
+							0,
+							self.TopbarHeight
+						)
 				}
 			)
-
-			sidebar.Visible = false
-			content.Visible = false
 		else
-			sidebar.Visible = true
-			content.Visible = true
-
 			Tween(
 				main,
-				0.32,
+				0.3,
 				{
 					Size = normalSize
 				}
@@ -1207,24 +1505,35 @@ function Pebble:CreateWindow(config)
 
 	--// Maximize
 
-	local previousPosition = main.Position
-	local previousSize = main.Size
+	local previousPosition =
+		main.Position
+
+	local previousSize =
+		main.Size
 
 	maximizeButton.MouseButton1Click:Connect(function()
-		self.Maximized = not self.Maximized
+		self.Maximized =
+			not self.Maximized
 
 		if self.Maximized then
-			previousPosition = main.Position
-			previousSize = main.Size
+			previousPosition =
+				main.Position
 
-			main.AnchorPoint = Vector2.new(0, 0)
+			previousSize =
+				main.Size
+
+			main.AnchorPoint =
+				Vector2.new(0, 0)
 
 			Tween(
 				main,
 				0.35,
 				{
 					Position =
-						UDim2.fromOffset(12, 12),
+						UDim2.fromOffset(
+							12,
+							12
+						),
 
 					Size =
 						UDim2.new(
@@ -1243,51 +1552,38 @@ function Pebble:CreateWindow(config)
 				main,
 				0.35,
 				{
-					Position = previousPosition,
-					Size = previousSize
+					Position =
+						previousPosition,
+
+					Size =
+						previousSize
 				}
 			)
 		end
 	end)
 
-	--// Close
-
-	closeButton.MouseButton1Click:Connect(function()
-		Tween(
-			main,
-			0.18,
-			{
-				Size = UDim2.new(
-					main.Size.X.Scale,
-					main.Size.X.Offset - 20,
-					main.Size.Y.Scale,
-					main.Size.Y.Offset - 20
-				)
-			}
-		)
-
-		task.delay(0.18, function()
-			screenGui:Destroy()
-		end)
-	end)
-
-	--// Dragging
+	--// Drag
 
 	if self.Draggable then
 		local dragging = false
-		local dragStart = nil
-		local startPosition = nil
+
+		local dragStart
+		local startPosition
 
 		topbar.InputBegan:Connect(function(input)
-			if input.UserInputType ==
-				Enum.UserInputType.MouseButton1
-				or input.UserInputType ==
-				Enum.UserInputType.Touch
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseButton1
+				or input.UserInputType
+					== Enum.UserInputType.Touch
 			then
 				dragging = true
 
-				dragStart = input.Position
-				startPosition = main.Position
+				dragStart =
+					input.Position
+
+				startPosition =
+					main.Position
 			end
 		end)
 
@@ -1296,13 +1592,15 @@ function Pebble:CreateWindow(config)
 				return
 			end
 
-			if input.UserInputType ==
-				Enum.UserInputType.MouseMovement
-				or input.UserInputType ==
-				Enum.UserInputType.Touch
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseMovement
+				or input.UserInputType
+					== Enum.UserInputType.Touch
 			then
 				local delta =
-					input.Position - dragStart
+					input.Position
+					- dragStart
 
 				main.Position =
 					UDim2.new(
@@ -1318,10 +1616,11 @@ function Pebble:CreateWindow(config)
 		end)
 
 		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType ==
-				Enum.UserInputType.MouseButton1
-				or input.UserInputType ==
-				Enum.UserInputType.Touch
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseButton1
+				or input.UserInputType
+					== Enum.UserInputType.Touch
 			then
 				dragging = false
 			end
@@ -1331,7 +1630,7 @@ function Pebble:CreateWindow(config)
 	--// Resize
 
 	if self.Resizable then
-		local resizeHandle = New("Frame", {
+		local resizeButton = New("TextButton", {
 			Name = "ResizeHandle",
 
 			AnchorPoint =
@@ -1341,37 +1640,35 @@ function Pebble:CreateWindow(config)
 				UDim2.fromScale(1, 1),
 
 			Size =
-				UDim2.fromOffset(18, 18),
+				UDim2.fromOffset(
+					20,
+					20
+				),
 
 			BackgroundTransparency = 1,
-
-			ZIndex = 50
-		})
-
-		resizeHandle.Parent = main
-
-		local resizeButton = New("TextButton", {
-			BackgroundTransparency = 1,
-
-			Size = UDim2.fromScale(1, 1),
 
 			Text = "",
 
-			ZIndex = 51
+			ZIndex = 100
 		})
 
-		resizeButton.Parent = resizeHandle
+		resizeButton.Parent = main
 
 		local resizing = false
-		local resizeStart = nil
-		local startSize = nil
+
+		local resizeStart
+		local startSize
 
 		resizeButton.InputBegan:Connect(function(input)
-			if input.UserInputType ==
-				Enum.UserInputType.MouseButton1
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseButton1
 			then
 				resizing = true
-				resizeStart = input.Position
+
+				resizeStart =
+					input.Position
+
 				startSize =
 					main.AbsoluteSize
 			end
@@ -1382,8 +1679,9 @@ function Pebble:CreateWindow(config)
 				return
 			end
 
-			if input.UserInputType ==
-				Enum.UserInputType.MouseMovement
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseMovement
 			then
 				local delta =
 					input.Position
@@ -1392,6 +1690,7 @@ function Pebble:CreateWindow(config)
 				local width =
 					math.clamp(
 						startSize.X + delta.X,
+
 						self.MinSize.X,
 						self.MaxSize.X
 					)
@@ -1399,6 +1698,7 @@ function Pebble:CreateWindow(config)
 				local height =
 					math.clamp(
 						startSize.Y + delta.Y,
+
 						self.MinSize.Y,
 						self.MaxSize.Y
 					)
@@ -1409,13 +1709,15 @@ function Pebble:CreateWindow(config)
 						height
 					)
 
-				normalSize = main.Size
+				normalSize =
+					main.Size
 			end
 		end)
 
 		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType ==
-				Enum.UserInputType.MouseButton1
+			if
+				input.UserInputType
+					== Enum.UserInputType.MouseButton1
 			then
 				resizing = false
 			end
@@ -1430,39 +1732,39 @@ end
 function Window:Tab(config)
 	config = config or {}
 
-	local tab = setmetatable({}, Tab)
+	local tab =
+		setmetatable({}, Tab)
 
 	tab.Window = self
 
 	tab.Title =
-		config.Title
-		or "Tab"
+		config.Title or "Tab"
 
-	tab.Icon = config.Icon
+	tab.Icon =
+		config.Icon
 
 	tab.Locked =
 		config.Locked == true
 
 	tab.Selected = false
 
-	-- Correct sequential sidebar ordering
-
 	self._SidebarOrder += 1
 
 	tab.LayoutOrder =
 		self._SidebarOrder
 
-	--// Sidebar button
+	--// Button
 
 	local button = New("TextButton", {
 		Name = tab.Title,
 
-		Size = UDim2.new(
-			1,
-			0,
-			0,
-			42
-		),
+		Size =
+			UDim2.new(
+				1,
+				0,
+				0,
+				42
+			),
 
 		BackgroundColor3 =
 			self.SelectColor,
@@ -1478,7 +1780,7 @@ function Window:Tab(config)
 		LayoutOrder =
 			tab.LayoutOrder,
 
-		ZIndex = 10
+		ZIndex = 20
 	})
 
 	Corner(button, 9)
@@ -1517,7 +1819,7 @@ function Window:Tab(config)
 
 		BorderSizePixel = 0,
 
-		ZIndex = 12
+		ZIndex = 22
 	})
 
 	Corner(accent, 2)
@@ -1529,10 +1831,11 @@ function Window:Tab(config)
 	--// Icon
 
 	if tab.Icon then
-		local icon = CreateIcon(
-			tab.Icon,
-			17
-		)
+		local icon =
+			CreateIcon(
+				tab.Icon,
+				17
+			)
 
 		icon.AnchorPoint =
 			Vector2.new(0, 0.5)
@@ -1548,14 +1851,14 @@ function Window:Tab(config)
 		icon.ImageColor3 =
 			Theme.Icon
 
-		icon.ZIndex = 12
+		icon.ZIndex = 22
 
 		icon.Parent = button
 
 		tab.IconImage = icon
 	end
 
-	--// Title
+	--// Label
 
 	local titleLabel = New("TextLabel", {
 		Name = "Title",
@@ -1564,21 +1867,29 @@ function Window:Tab(config)
 
 		Position =
 			UDim2.fromOffset(
-				tab.Icon and 42 or 14,
+				tab.Icon
+					and 42
+					or 14,
+
 				0
 			),
 
 		Size =
 			UDim2.new(
 				1,
-				tab.Locked and -74 or -52,
+				tab.Locked
+					and -74
+					or -52,
+
 				1,
 				0
 			),
 
-		Font = Enum.Font.GothamMedium,
+		Font =
+			Enum.Font.GothamMedium,
 
-		Text = tab.Title,
+		Text =
+			tab.Title,
 
 		TextColor3 =
 			tab.Locked
@@ -1593,20 +1904,22 @@ function Window:Tab(config)
 		TextTruncate =
 			Enum.TextTruncate.AtEnd,
 
-		ZIndex = 12
+		ZIndex = 22
 	})
 
 	titleLabel.Parent = button
 
-	tab.TitleLabel = titleLabel
+	tab.TitleLabel =
+		titleLabel
 
 	--// Lock
 
 	if tab.Locked then
-		local lock = CreateIcon(
-			"lock",
-			13
-		)
+		local lock =
+			CreateIcon(
+				"lock",
+				13
+			)
 
 		lock.AnchorPoint =
 			Vector2.new(1, 0.5)
@@ -1622,7 +1935,7 @@ function Window:Tab(config)
 		lock.ImageColor3 =
 			Theme.MutedText
 
-		lock.ZIndex = 12
+		lock.ZIndex = 22
 
 		lock.Parent = button
 
@@ -1632,9 +1945,11 @@ function Window:Tab(config)
 	--// Page
 
 	local page = New("ScrollingFrame", {
-		Name = tab.Title .. "Page",
+		Name =
+			tab.Title .. "Page",
 
-		Size = UDim2.fromScale(1, 1),
+		Size =
+			UDim2.fromScale(1, 1),
 
 		BackgroundTransparency = 1,
 
@@ -1652,13 +1967,15 @@ function Window:Tab(config)
 
 		Visible = false,
 
-		ZIndex = 5
+		ZIndex = 10
 	})
 
-	page.Parent = self.Content
+	page.Parent =
+		self.Content
 
-	local pagePadding = New("UIPadding", {
-		PaddingTop = UDim.new(0, 18),
+	local padding = New("UIPadding", {
+		PaddingTop =
+			UDim.new(0, 18),
 
 		PaddingBottom =
 			UDim.new(0, 18),
@@ -1670,20 +1987,21 @@ function Window:Tab(config)
 			UDim.new(0, 20)
 	})
 
-	pagePadding.Parent = page
+	padding.Parent = page
 
-	local pageLayout = New("UIListLayout", {
-		Padding = UDim.new(0, 10),
+	local layout = New("UIListLayout", {
+		Padding =
+			UDim.new(0, 10),
 
 		SortOrder =
 			Enum.SortOrder.LayoutOrder
 	})
 
-	pageLayout.Parent = page
+	layout.Parent = page
 
 	tab.Page = page
 	tab.Container = page
-	tab.Layout = pageLayout
+	tab.Layout = layout
 
 	table.insert(
 		self.Tabs,
@@ -1730,9 +2048,8 @@ function Window:Tab(config)
 		end)
 	end
 
-	-- Auto select first unlocked tab
-
-	if not self.SelectedTab
+	if
+		not self.SelectedTab
 		and not tab.Locked
 	then
 		task.defer(function()
@@ -1750,14 +2067,17 @@ function Tab:Select()
 		return self
 	end
 
-	local window = self.Window
+	local window =
+		self.Window
 
 	for _, tab in ipairs(window.Tabs) do
 		local selected =
 			tab == self
 
 		tab.Selected = selected
-		tab.Page.Visible = selected
+
+		tab.Page.Visible =
+			selected
 
 		Tween(
 			tab.Button,
@@ -1773,30 +2093,30 @@ function Tab:Select()
 			}
 		)
 
-		if tab.Accent then
-			tab.Accent.BackgroundColor3 =
-				window.SelectColor
+		Tween(
+			tab.Accent,
+			0.22,
+			{
+				BackgroundColor3 =
+					window.SelectColor,
 
-			Tween(
-				tab.Accent,
-				0.22,
-				{
-					BackgroundTransparency =
-						selected and 0 or 1,
+				BackgroundTransparency =
+					selected
+					and 0
+					or 1,
 
-					Size =
-						selected
-						and UDim2.fromOffset(
-							3,
-							20
-						)
-						or UDim2.fromOffset(
-							3,
-							8
-						)
-				}
-			)
-		end
+				Size =
+					selected
+					and UDim2.fromOffset(
+						3,
+						20
+					)
+					or UDim2.fromOffset(
+						3,
+						8
+					)
+			}
+		)
 
 		if tab.IconImage then
 			Tween(
@@ -1829,32 +2149,35 @@ function Tab:Select()
 		end
 	end
 
-	window.SelectedTab = self
+	window.SelectedTab =
+		self
 
 	return self
 end
 
 function Tab:Divider()
-	local window = self.Window
+	local window =
+		self.Window
 
 	window._SidebarOrder += 1
 
 	local holder = New("Frame", {
 		Name = "Divider",
 
-		Size = UDim2.new(
-			1,
-			0,
-			0,
-			13
-		),
+		Size =
+			UDim2.new(
+				1,
+				0,
+				0,
+				13
+			),
 
 		BackgroundTransparency = 1,
 
 		LayoutOrder =
 			window._SidebarOrder,
 
-		ZIndex = 8
+		ZIndex = 18
 	})
 
 	holder.Parent =
@@ -1865,7 +2188,10 @@ function Tab:Divider()
 			Vector2.new(0.5, 0.5),
 
 		Position =
-			UDim2.fromScale(0.5, 0.5),
+			UDim2.fromScale(
+				0.5,
+				0.5
+			),
 
 		Size =
 			UDim2.new(
@@ -1883,7 +2209,7 @@ function Tab:Divider()
 
 		BorderSizePixel = 0,
 
-		ZIndex = 9
+		ZIndex = 19
 	})
 
 	line.Parent = holder
@@ -1891,7 +2217,7 @@ function Tab:Divider()
 	return holder
 end
 
---// Window setters
+--// Runtime setters
 
 function Window:SetSelectColor(color)
 	if typeof(color) ~= "Color3" then
@@ -1901,10 +2227,12 @@ function Window:SetSelectColor(color)
 	self.SelectColor = color
 
 	for _, tab in ipairs(self.Tabs) do
-		tab.Accent.BackgroundColor3 = color
+		tab.Accent.BackgroundColor3 =
+			color
 
 		if tab.Selected then
-			tab.Button.BackgroundColor3 = color
+			tab.Button.BackgroundColor3 =
+				color
 		end
 	end
 end
@@ -1915,7 +2243,11 @@ function Window:SetSelectTransparency(transparency)
 	end
 
 	self.SelectTransparency =
-		math.clamp(transparency, 0, 1)
+		math.clamp(
+			transparency,
+			0,
+			1
+		)
 
 	if self.SelectedTab then
 		Tween(
@@ -1935,7 +2267,11 @@ function Window:SetBackgroundTransparency(transparency)
 	end
 
 	self.BackgroundTransparency =
-		math.clamp(transparency, 0, 1)
+		math.clamp(
+			transparency,
+			0,
+			1
+		)
 
 	Tween(
 		self.Surface,
@@ -1953,10 +2289,14 @@ function Window:SetSidebarTransparency(transparency)
 	end
 
 	self.SidebarTransparency =
-		math.clamp(transparency, 0, 1)
+		math.clamp(
+			transparency,
+			0,
+			1
+		)
 
 	Tween(
-		self.Sidebar,
+		self.SidebarGlass,
 		0.25,
 		{
 			BackgroundTransparency =
