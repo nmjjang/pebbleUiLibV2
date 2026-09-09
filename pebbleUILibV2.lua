@@ -1,6 +1,6 @@
 --[[
     Pebble UI Library
-    Version 0.5.0
+    Version 0.6.0
 
     Single-file Roblox/Luau UI library.
 
@@ -43,7 +43,7 @@
 ]]
 
 local Pebble = {
-    Version = "0.5.0",
+    Version = "0.6.0",
 }
 
 --============================================================
@@ -132,7 +132,7 @@ Pebble.Theme = DefaultTheme
 
 local Defaults = {
     Title = "Pebble",
-    Version = "v0.5",
+    Version = "v0.6",
     Icon = "sparkles",
     Tags = {},
 
@@ -458,6 +458,7 @@ local function CreateContainer(window, parent, config)
         ZIndex = config.ZIndex or 10,
         Visible = config.Visible ~= false,
         ClipsDescendants = config.ClipsDescendants == true,
+        AutomaticSize = config.AutomaticSize or Enum.AutomaticSize.None,
     }
 
     if scrolling then
@@ -594,6 +595,92 @@ function Container:Grid(config)
     return self:Layout(config)
 end
 
+
+--============================================================
+-- Wind-style element defaults
+--============================================================
+
+local function WindRowHeight(config, base)
+    if config.Size then
+        return nil
+    end
+    if config.Height then
+        return config.Height
+    end
+    if config.Desc or config.Description then
+        return math.max(base or 46, 54)
+    end
+    return base or 46
+end
+
+local function CreateWindTextBlock(window, parent, config, rightOffset, zIndex)
+    local padding = config.Padding or 12
+    local descText = config.Desc or config.Description
+    local hasDesc = descText ~= nil and tostring(descText) ~= ""
+
+    local title = New("TextLabel", {
+        Name = "Title",
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(padding, hasDesc and 7 or 0),
+        Size = UDim2.new(1, -(padding * 2) - (rightOffset or 0), hasDesc and 0 or 1, hasDesc and 20 or 0),
+        Font = config.TitleFont or config.Font or Enum.Font.GothamMedium,
+        Text = config.Title or config.Text or "Element",
+        TextSize = config.TitleSize or config.TextSize or 12,
+        TextXAlignment = ResolveTextX(config.Alignment or "Left"),
+        TextYAlignment = Enum.TextYAlignment.Center,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        ZIndex = zIndex,
+    })
+    BindTheme(window, title, "TextColor3", config.Locked and "MutedText" or "Text", config.TitleColor or config.TextColor)
+    title.Parent = parent
+
+    local desc
+    if hasDesc then
+        desc = New("TextLabel", {
+            Name = "Desc",
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(padding, 27),
+            Size = UDim2.new(1, -(padding * 2) - (rightOffset or 0), 0, 18),
+            Font = config.DescFont or Enum.Font.Gotham,
+            Text = tostring(descText),
+            TextSize = config.DescSize or 10,
+            TextWrapped = false,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            TextXAlignment = ResolveTextX(config.Alignment or "Left"),
+            TextYAlignment = Enum.TextYAlignment.Top,
+            ZIndex = zIndex,
+        })
+        BindTheme(window, desc, "TextColor3", "SubText", config.DescColor)
+        desc.Parent = parent
+    end
+
+    return title, desc
+end
+
+local function AttachLockAPI(element, config, render)
+    element.Locked = config.Locked == true
+
+    function element:Lock()
+        element.Locked = true
+        if render then render() end
+        return element
+    end
+
+    function element:Unlock()
+        element.Locked = false
+        if render then render() end
+        return element
+    end
+
+    function element:SetLocked(value)
+        element.Locked = value == true
+        if render then render() end
+        return element
+    end
+
+    return element
+end
+
 --============================================================
 -- Panel
 --============================================================
@@ -643,9 +730,9 @@ function Container:Panel(config)
 
     local proxies = {
         "Layout", "Free", "Vertical", "Horizontal", "Grid",
-        "Panel", "Text", "Paragraph", "Button", "Toggle", "Slider",
+        "Panel", "Text", "Paragraph", "Icon", "Button", "Toggle", "Slider",
         "ProgressBar", "Input", "Dropdown", "Keybind", "Code",
-        "ColorPicker", "Section", "Divider", "Space", "Image",
+        "Colorpicker", "ColorPicker", "Section", "Divider", "Space", "Image",
     }
 
     for _, method in ipairs(proxies) do
@@ -698,6 +785,39 @@ function Container:Text(config)
     local element = MakeElement(self.Window, label)
     function element:SetText(text)
         label.Text = tostring(text)
+        return element
+    end
+
+    return element
+end
+
+
+--============================================================
+-- Icon
+--============================================================
+
+function Container:Icon(config)
+    config = config or {}
+    self:_NextOrder(config)
+
+    local size = config.Size or UDim2.fromOffset(config.IconSize or 20, config.IconSize or 20)
+    local icon = CreateIcon(config.Icon or config.Name or "circle", config.IconSize or math.max(size.X.Offset, size.Y.Offset, 20))
+    icon.Name = config.Name or "Icon"
+    icon.Position = config.Position or UDim2.fromOffset(0, 0)
+    icon.Size = size
+    icon.AnchorPoint = config.AnchorPoint or Vector2.zero
+    icon.BackgroundTransparency = config.BackgroundTransparency == nil and 1 or config.BackgroundTransparency
+    icon.LayoutOrder = config.LayoutOrder
+    icon.ZIndex = config.ZIndex or 20
+    icon.Visible = config.Visible ~= false
+    BindTheme(self.Window, icon, "ImageColor3", "Icon", config.Color or config.IconColor or config.ImageColor)
+    icon.Parent = self.Container
+
+    local element = MakeElement(self.Window, icon)
+    element.Image = icon
+
+    function element:SetIcon(name)
+        icon.Image = GetIcon(name)
         return element
     end
 
@@ -801,12 +921,13 @@ function Container:Button(config)
     config = config or {}
     self:_NextOrder(config)
 
+    local height = WindRowHeight(config, 46)
     local button = New("TextButton", {
         Name = config.Name or "Button",
         Position = config.Position or UDim2.fromOffset(0, 0),
-        Size = config.Size or UDim2.new(1, 0, 0, config.Height or 38),
+        Size = config.Size or UDim2.new(1, 0, 0, height),
         AnchorPoint = config.AnchorPoint or Vector2.zero,
-        BackgroundTransparency = config.BackgroundTransparency == nil and 0.08 or config.BackgroundTransparency,
+        BackgroundTransparency = config.BackgroundTransparency == nil and 0.10 or config.BackgroundTransparency,
         BorderSizePixel = 0,
         AutoButtonColor = false,
         Text = "",
@@ -815,84 +936,83 @@ function Container:Button(config)
         Visible = config.Visible ~= false,
     })
     BindTheme(self.Window, button, "BackgroundColor3", "Surface", config.BackgroundColor)
-    Corner(button, config.CornerRadius or 8)
+    Corner(button, config.CornerRadius or 9)
 
     if config.Stroke ~= false then
-        local stroke = AddStroke(button, ThemeValue(self.Window, "Stroke"), config.StrokeTransparency == nil and 0.93 or config.StrokeTransparency, config.StrokeThickness or 1)
+        local stroke = AddStroke(button, ThemeValue(self.Window, "Stroke"),
+            config.StrokeTransparency == nil and 0.94 or config.StrokeTransparency,
+            config.StrokeThickness or 1)
         BindTheme(self.Window, stroke, "Color", "Stroke", config.StrokeColor)
     end
 
-    local iconSize = config.Icon and (config.IconSize or 17) or 0
-    local padding = config.Padding or 12
-    local textLeft = padding + (iconSize > 0 and iconSize + 9 or 0)
+    local rightOffset = config.Icon == false and 0 or 34
+    local title, desc = CreateWindTextBlock(self.Window, button, config, rightOffset, button.ZIndex + 2)
 
-    if config.Icon then
-        local icon = CreateIcon(config.Icon, iconSize)
-        icon.AnchorPoint = Vector2.new(0, 0.5)
-        icon.Position = UDim2.new(0, padding, 0.5, 0)
+    local icon
+    if config.Icon ~= false then
+        icon = CreateIcon(config.Icon or "mouse-pointer-click", config.IconSize or 17)
+        icon.AnchorPoint = Vector2.new(1, 0.5)
+        icon.Position = UDim2.new(1, -(config.Padding or 12), 0.5, 0)
         icon.ZIndex = button.ZIndex + 2
-        BindTheme(self.Window, icon, "ImageColor3", "Icon", config.IconColor)
+        BindTheme(self.Window, icon, "ImageColor3", config.Locked and "MutedText" or "Icon", config.IconColor)
         icon.Parent = button
     end
 
-    local title = New("TextLabel", {
-        BackgroundTransparency = 1,
-        Position = UDim2.fromOffset(textLeft, 0),
-        Size = UDim2.new(1, -textLeft - padding, 1, 0),
-        Font = config.Font or Enum.Font.GothamMedium,
-        Text = config.Title or config.Text or "Button",
-        TextSize = config.TextSize or 12,
-        TextXAlignment = ResolveTextX(config.Alignment or "Left"),
-        TextYAlignment = Enum.TextYAlignment.Center,
-        TextTruncate = Enum.TextTruncate.AtEnd,
-        ZIndex = button.ZIndex + 2,
-    })
-    BindTheme(self.Window, title, "TextColor3", "Text", config.TextColor)
-    title.Parent = button
-
     button.Parent = self.Container
+    local element = MakeElement(self.Window, button)
+    element.TitleLabel = title
+    element.DescLabel = desc
+    element.IconImage = icon
 
     local normalTransparency = button.BackgroundTransparency
     local hoverTransparency = config.HoverTransparency == nil and math.max(0, normalTransparency - 0.05) or config.HoverTransparency
 
-    button.MouseEnter:Connect(function()
-        if config.HoverColor then
-            Tween(button, 0.14, {
-                BackgroundColor3 = config.HoverColor,
-                BackgroundTransparency = hoverTransparency,
-            })
-        else
-            Tween(button, 0.14, { BackgroundTransparency = hoverTransparency })
+    local function renderLock()
+        local locked = element.Locked == true
+        if title then
+            title.TextColor3 = locked and ThemeValue(self.Window, "MutedText") or (config.TextColor or ThemeValue(self.Window, "Text"))
         end
+        if icon then
+            icon.ImageColor3 = locked and ThemeValue(self.Window, "MutedText") or (config.IconColor or ThemeValue(self.Window, "Icon"))
+        end
+        button.BackgroundTransparency = locked and math.min(1, normalTransparency + 0.04) or normalTransparency
+    end
+
+    AttachLockAPI(element, config, renderLock)
+
+    button.MouseEnter:Connect(function()
+        if element.Locked then return end
+        Tween(button, 0.14, {BackgroundTransparency = hoverTransparency})
     end)
 
     button.MouseLeave:Connect(function()
-        local props = { BackgroundTransparency = normalTransparency }
-        if config.HoverColor then
-            props.BackgroundColor3 = config.BackgroundColor or ThemeValue(self.Window, "Surface")
-        end
-        Tween(button, 0.14, props)
+        Tween(button, 0.14, {BackgroundTransparency = element.Locked and math.min(1, normalTransparency + 0.04) or normalTransparency})
     end)
 
     button.MouseButton1Click:Connect(function()
+        if element.Locked then return end
         SafeCallback(config.Callback)
     end)
 
-    local element = MakeElement(self.Window, button)
-    element.TitleLabel = title
-
     function element:OnClick(callback)
         button.MouseButton1Click:Connect(function()
-            SafeCallback(callback)
+            if not element.Locked then SafeCallback(callback) end
         end)
         return element
     end
 
-    function element:SetText(value)
+    function element:SetTitle(value)
         title.Text = tostring(value)
         return element
     end
+    element.SetText = element.SetTitle
 
+    function element:SetDesc(value)
+        if desc then desc.Text = tostring(value) end
+        return element
+    end
+
+    renderLock()
     return element
 end
 
@@ -908,10 +1028,11 @@ function Container:Toggle(config)
     if value == nil then value = config.Default end
     value = value == true
 
+    local height = WindRowHeight(config, 46)
     local frame = New("TextButton", {
         Name = config.Name or "Toggle",
         Position = config.Position or UDim2.fromOffset(0, 0),
-        Size = config.Size or UDim2.new(1, 0, 0, config.Height or 42),
+        Size = config.Size or UDim2.new(1, 0, 0, height),
         AnchorPoint = config.AnchorPoint or Vector2.zero,
         BackgroundTransparency = config.BackgroundTransparency == nil and 0.10 or config.BackgroundTransparency,
         BorderSizePixel = 0,
@@ -922,28 +1043,15 @@ function Container:Toggle(config)
         Visible = config.Visible ~= false,
     })
     BindTheme(self.Window, frame, "BackgroundColor3", "Surface", config.BackgroundColor)
-    Corner(frame, config.CornerRadius or 8)
+    Corner(frame, config.CornerRadius or 9)
 
+    local title, desc = CreateWindTextBlock(self.Window, frame, config, 58, frame.ZIndex + 2)
     local padding = config.Padding or 12
-    local title = New("TextLabel", {
-        BackgroundTransparency = 1,
-        Position = UDim2.fromOffset(padding, 0),
-        Size = UDim2.new(1, -92, 1, 0),
-        Font = config.Font or Enum.Font.GothamMedium,
-        Text = config.Title or "Toggle",
-        TextSize = config.TextSize or 12,
-        TextXAlignment = ResolveTextX(config.Alignment or "Left"),
-        TextYAlignment = Enum.TextYAlignment.Center,
-        TextTruncate = Enum.TextTruncate.AtEnd,
-        ZIndex = frame.ZIndex + 2,
-    })
-    BindTheme(self.Window, title, "TextColor3", "Text", config.TextColor)
-    title.Parent = frame
 
     local track = New("Frame", {
         AnchorPoint = Vector2.new(1, 0.5),
         Position = UDim2.new(1, -padding, 0.5, 0),
-        Size = config.SwitchSize or UDim2.fromOffset(42, 22),
+        Size = config.SwitchSize or UDim2.fromOffset(38, 20),
         BackgroundTransparency = 0,
         BorderSizePixel = 0,
         ZIndex = frame.ZIndex + 2,
@@ -953,7 +1061,7 @@ function Container:Toggle(config)
 
     local knob = New("Frame", {
         AnchorPoint = Vector2.new(0.5, 0.5),
-        Size = UDim2.fromOffset(16, 16),
+        Size = UDim2.fromOffset(14, 14),
         BackgroundColor3 = Color3.fromRGB(255, 255, 255),
         BorderSizePixel = 0,
         ZIndex = frame.ZIndex + 3,
@@ -965,30 +1073,35 @@ function Container:Toggle(config)
 
     local element = MakeElement(self.Window, frame)
     element.Value = value
+    element.TitleLabel = title
+    element.DescLabel = desc
     element.Track = track
     element.Knob = knob
 
     local function render(instant)
-        local accent = config.ActiveColor or ThemeValue(self.Window, "Accent")
-        local offColor = config.InactiveColor or ThemeValue(self.Window, "Surface2")
-        local targetColor = element.Value and accent or offColor
-        local targetPosition = element.Value and UDim2.new(1, -11, 0.5, 0) or UDim2.new(0, 11, 0.5, 0)
+        local enabled = element.Value and not element.Locked
+        local targetColor = enabled
+            and (config.ActiveColor or ThemeValue(self.Window, "Accent"))
+            or (config.InactiveColor or ThemeValue(self.Window, "Surface2"))
+        local targetPosition = element.Value and UDim2.new(1, -10, 0.5, 0) or UDim2.new(0, 10, 0.5, 0)
 
         if instant then
             track.BackgroundColor3 = targetColor
             knob.Position = targetPosition
         else
-            Tween(track, 0.18, { BackgroundColor3 = targetColor })
-            Tween(knob, 0.18, { Position = targetPosition })
+            Tween(track, 0.18, {BackgroundColor3 = targetColor})
+            Tween(knob, 0.18, {Position = targetPosition})
         end
+        title.TextColor3 = element.Locked and ThemeValue(self.Window, "MutedText") or (config.TextColor or ThemeValue(self.Window, "Text"))
     end
 
+    AttachLockAPI(element, config, function() render(true) end)
+
     function element:Set(newValue, fireCallback)
+        if element.Locked then return element end
         element.Value = newValue == true
         render(false)
-        if fireCallback ~= false then
-            SafeCallback(config.Callback, element.Value)
-        end
+        if fireCallback ~= false then SafeCallback(config.Callback, element.Value) end
         return element
     end
 
@@ -996,8 +1109,18 @@ function Container:Toggle(config)
         return element.Value
     end
 
+    function element:SetTitle(value2)
+        title.Text = tostring(value2)
+        return element
+    end
+
+    function element:SetDesc(value2)
+        if desc then desc.Text = tostring(value2) end
+        return element
+    end
+
     frame.MouseButton1Click:Connect(function()
-        element:Set(not element.Value, true)
+        if not element.Locked then element:Set(not element.Value, true) end
     end)
 
     render(true)
@@ -1012,20 +1135,22 @@ function Container:Slider(config)
     config = config or {}
     self:_NextOrder(config)
 
-    local minValue = tonumber(config.Min) or 0
-    local maxValue = tonumber(config.Max) or 100
+    local valueTable = typeof(config.Value) == "table" and config.Value or nil
+    local minValue = tonumber(config.Min) or tonumber(valueTable and valueTable.Min) or 0
+    local maxValue = tonumber(config.Max) or tonumber(valueTable and valueTable.Max) or 100
     if maxValue <= minValue then maxValue = minValue + 1 end
 
     local step = tonumber(config.Step) or 1
-    local value = tonumber(config.Value)
+    local value = valueTable and tonumber(valueTable.Default) or tonumber(config.Value)
     if value == nil then value = tonumber(config.Default) end
     if value == nil then value = minValue end
     value = math.clamp(RoundToStep(value, step), minValue, maxValue)
 
+    local height = config.Size and nil or (config.Height or ((config.Desc or config.Description) and 66 or 58))
     local frame = New("Frame", {
         Name = config.Name or "Slider",
         Position = config.Position or UDim2.fromOffset(0, 0),
-        Size = config.Size or UDim2.new(1, 0, 0, config.Height or 58),
+        Size = config.Size or UDim2.new(1, 0, 0, height),
         AnchorPoint = config.AnchorPoint or Vector2.zero,
         BackgroundTransparency = config.BackgroundTransparency == nil and 0.10 or config.BackgroundTransparency,
         BorderSizePixel = 0,
@@ -1034,42 +1159,30 @@ function Container:Slider(config)
         Visible = config.Visible ~= false,
     })
     BindTheme(self.Window, frame, "BackgroundColor3", "Surface", config.BackgroundColor)
-    Corner(frame, config.CornerRadius or 8)
+    Corner(frame, config.CornerRadius or 9)
 
+    local title, desc = CreateWindTextBlock(self.Window, frame, config, 148, frame.ZIndex + 2)
     local padding = config.Padding or 12
-    local title = New("TextLabel", {
-        BackgroundTransparency = 1,
-        Position = UDim2.fromOffset(padding, 7),
-        Size = UDim2.new(1, -90, 0, 18),
-        Font = config.Font or Enum.Font.GothamMedium,
-        Text = config.Title or "Slider",
-        TextSize = config.TextSize or 12,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextYAlignment = Enum.TextYAlignment.Center,
-        TextTruncate = Enum.TextTruncate.AtEnd,
-        ZIndex = frame.ZIndex + 2,
-    })
-    BindTheme(self.Window, title, "TextColor3", "Text", config.TextColor)
-    title.Parent = frame
+    local controlWidth = config.Width or 130
 
     local valueLabel = New("TextLabel", {
         BackgroundTransparency = 1,
         AnchorPoint = Vector2.new(1, 0),
         Position = UDim2.new(1, -padding, 0, 7),
-        Size = UDim2.fromOffset(68, 18),
+        Size = UDim2.fromOffset(44, 18),
         Font = Enum.Font.Gotham,
         Text = "",
         TextSize = config.ValueTextSize or 10,
         TextXAlignment = Enum.TextXAlignment.Right,
-        TextYAlignment = Enum.TextYAlignment.Center,
-        ZIndex = frame.ZIndex + 2,
+        ZIndex = frame.ZIndex + 3,
     })
     BindTheme(self.Window, valueLabel, "TextColor3", "SubText", config.ValueTextColor)
     valueLabel.Parent = frame
 
     local track = New("Frame", {
-        Position = UDim2.new(0, padding, 1, -20),
-        Size = UDim2.new(1, -(padding * 2), 0, config.TrackHeight or 5),
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -padding - 50, 0.5, 0),
+        Size = UDim2.fromOffset(controlWidth, config.TrackHeight or 5),
         BackgroundTransparency = 0,
         BorderSizePixel = 0,
         ZIndex = frame.ZIndex + 2,
@@ -1078,21 +1191,16 @@ function Container:Slider(config)
     Corner(track, 999)
     track.Parent = frame
 
-    local fill = New("Frame", {
-        Size = UDim2.new(0, 0, 1, 0),
-        BackgroundTransparency = 0,
-        BorderSizePixel = 0,
-        ZIndex = track.ZIndex + 1,
-    })
+    local fill = New("Frame", {Size = UDim2.new(0,0,1,0), BackgroundTransparency = 0, BorderSizePixel = 0, ZIndex = track.ZIndex + 1})
     BindTheme(self.Window, fill, "BackgroundColor3", "Accent", config.FillColor)
     Corner(fill, 999)
     fill.Parent = track
 
     local thumb = New("Frame", {
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(0, 0, 0.5, 0),
-        Size = UDim2.fromOffset(config.ThumbSize or 12, config.ThumbSize or 12),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+        AnchorPoint = Vector2.new(0.5,0.5),
+        Position = UDim2.new(0,0,0.5,0),
+        Size = UDim2.fromOffset(config.ThumbSize or 13, config.ThumbSize or 13),
+        BackgroundColor3 = Color3.fromRGB(255,255,255),
         BorderSizePixel = 0,
         ZIndex = track.ZIndex + 2,
     })
@@ -1101,73 +1209,64 @@ function Container:Slider(config)
 
     local hitbox = New("TextButton", {
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 0, 0, -8),
-        Size = UDim2.new(1, 0, 1, 16),
+        Position = UDim2.new(0,0,0,-9),
+        Size = UDim2.new(1,0,1,18),
         Text = "",
         AutoButtonColor = false,
         ZIndex = track.ZIndex + 5,
     })
     hitbox.Parent = track
-
     frame.Parent = self.Container
 
     local element = MakeElement(self.Window, frame)
     element.Value = value
-
-    local function alphaFromValue(v)
-        return (v - minValue) / (maxValue - minValue)
-    end
+    element.TitleLabel = title
+    element.DescLabel = desc
 
     local function render()
-        local alpha = alphaFromValue(element.Value)
-        fill.Size = UDim2.new(alpha, 0, 1, 0)
-        thumb.Position = UDim2.new(alpha, 0, 0.5, 0)
+        local alpha = (element.Value - minValue) / (maxValue - minValue)
+        fill.Size = UDim2.new(alpha,0,1,0)
+        thumb.Position = UDim2.new(alpha,0,0.5,0)
         valueLabel.Text = (config.Prefix or "") .. FormatNumber(element.Value) .. (config.Suffix or "")
+        title.TextColor3 = element.Locked and ThemeValue(self.Window, "MutedText") or (config.TextColor or ThemeValue(self.Window, "Text"))
     end
 
+    AttachLockAPI(element, config, render)
+
     function element:Set(newValue, fireCallback)
-        local numeric = tonumber(newValue) or minValue
-        numeric = math.clamp(RoundToStep(numeric, step), minValue, maxValue)
+        if element.Locked then return element end
+        local numeric = math.clamp(RoundToStep(tonumber(newValue) or minValue, step), minValue, maxValue)
         element.Value = numeric
         render()
-        if fireCallback ~= false then
-            SafeCallback(config.Callback, numeric)
-        end
+        if fireCallback ~= false then SafeCallback(config.Callback, numeric) end
         return element
     end
 
-    function element:GetValue()
-        return element.Value
-    end
+    function element:GetValue() return element.Value end
 
     local dragging = false
-
     local function updateFromX(x)
+        if element.Locked then return end
         local left = track.AbsolutePosition.X
-        local width = math.max(track.AbsoluteSize.X, 1)
-        local alpha = math.clamp((x - left) / width, 0, 1)
-        local nextValue = minValue + ((maxValue - minValue) * alpha)
-        element:Set(nextValue, true)
+        local width = math.max(track.AbsoluteSize.X,1)
+        local alpha = math.clamp((x-left)/width,0,1)
+        element:Set(minValue + ((maxValue-minValue)*alpha), true)
     end
 
     hitbox.InputBegan:Connect(function(input)
+        if element.Locked then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             updateFromX(input.Position.X)
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
-        if not dragging then return end
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             updateFromX(input.Position.X)
         end
     end)
-
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
     end)
 
     render()
@@ -1807,6 +1906,213 @@ function Container:Code(config)
         return label.Text
     end
 
+    return element
+end
+
+
+--============================================================
+-- Colorpicker (Wind-style compact row)
+--============================================================
+
+function Container:Colorpicker(config)
+    config = config or {}
+    self:_NextOrder(config)
+
+    local value = config.Value or config.Default or Color3.new(1, 1, 1)
+    if typeof(value) ~= "Color3" then value = Color3.new(1, 1, 1) end
+    local transparency = math.clamp(tonumber(config.Transparency) or 0, 0, 1)
+    local baseHeight = WindRowHeight(config, 46)
+
+    local frame = New("Frame", {
+        Name = config.Name or "Colorpicker",
+        Position = config.Position or UDim2.fromOffset(0, 0),
+        Size = config.Size or UDim2.new(1, 0, 0, baseHeight),
+        AnchorPoint = config.AnchorPoint or Vector2.zero,
+        BackgroundTransparency = config.BackgroundTransparency == nil and 0.10 or config.BackgroundTransparency,
+        BorderSizePixel = 0,
+        LayoutOrder = config.LayoutOrder,
+        ZIndex = config.ZIndex or 20,
+        Visible = config.Visible ~= false,
+        ClipsDescendants = true,
+    })
+    BindTheme(self.Window, frame, "BackgroundColor3", "Surface", config.BackgroundColor)
+    Corner(frame, config.CornerRadius or 9)
+
+    local title, desc = CreateWindTextBlock(self.Window, frame, config, 50, frame.ZIndex + 2)
+
+    local preview = New("TextButton", {
+        Name = "Preview",
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -(config.Padding or 12), 0, baseHeight / 2),
+        Size = UDim2.fromOffset(28, 28),
+        BackgroundColor3 = value,
+        BackgroundTransparency = transparency,
+        BorderSizePixel = 0,
+        Text = "",
+        AutoButtonColor = false,
+        ZIndex = frame.ZIndex + 3,
+    })
+    Corner(preview, 8)
+    AddStroke(preview, ThemeValue(self.Window, "Stroke"), 0.82, 1)
+    preview.Parent = frame
+
+    local editor = New("Frame", {
+        Name = "Editor",
+        Position = UDim2.fromOffset(12, baseHeight + 4),
+        Size = UDim2.new(1, -24, 0, 82),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = frame.ZIndex + 2,
+    })
+    editor.Parent = frame
+
+    local labels = {"R", "G", "B"}
+    local rows = {}
+
+    for i = 1, 3 do
+        local y = (i - 1) * 26
+        local label = New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.fromOffset(0, y),
+            Size = UDim2.fromOffset(18, 20),
+            Text = labels[i],
+            Font = Enum.Font.GothamMedium,
+            TextSize = 10,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = editor.ZIndex + 1,
+        })
+        BindTheme(self.Window, label, "TextColor3", "SubText")
+        label.Parent = editor
+
+        local track = New("Frame", {
+            Position = UDim2.fromOffset(22, y + 8),
+            Size = UDim2.new(1, -70, 0, 5),
+            BackgroundTransparency = 0,
+            BorderSizePixel = 0,
+            ZIndex = editor.ZIndex + 1,
+        })
+        BindTheme(self.Window, track, "BackgroundColor3", "Surface2")
+        Corner(track, 999)
+        track.Parent = editor
+
+        local fill = New("Frame", {Size = UDim2.new(0,0,1,0), BackgroundTransparency = 0, BorderSizePixel = 0, ZIndex = track.ZIndex + 1})
+        BindTheme(self.Window, fill, "BackgroundColor3", "Accent")
+        Corner(fill, 999)
+        fill.Parent = track
+
+        local box = New("TextBox", {
+            AnchorPoint = Vector2.new(1,0),
+            Position = UDim2.new(1,0,0,y),
+            Size = UDim2.fromOffset(42,20),
+            BackgroundTransparency = 0.05,
+            BorderSizePixel = 0,
+            ClearTextOnFocus = false,
+            Font = Enum.Font.Gotham,
+            Text = "0",
+            TextSize = 9,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            ZIndex = editor.ZIndex + 2,
+        })
+        BindTheme(self.Window, box, "BackgroundColor3", "Input")
+        BindTheme(self.Window, box, "TextColor3", "Text")
+        Corner(box, 6)
+        box.Parent = editor
+
+        rows[i] = {Track=track, Fill=fill, Box=box, Hitbox=CreateHitbox(track, track.ZIndex+5)}
+    end
+
+    frame.Parent = self.Container
+    local element = MakeElement(self.Window, frame)
+    element.Value = value
+    element.Transparency = transparency
+    element.Opened = false
+    element.TitleLabel = title
+    element.DescLabel = desc
+
+    local function rgb(c)
+        return math.floor(c.R*255+0.5), math.floor(c.G*255+0.5), math.floor(c.B*255+0.5)
+    end
+
+    local function render()
+        local r,g,b = rgb(element.Value)
+        local nums = {r,g,b}
+        preview.BackgroundColor3 = element.Value
+        preview.BackgroundTransparency = element.Transparency
+        for i,row in ipairs(rows) do
+            row.Fill.Size = UDim2.new(nums[i]/255,0,1,0)
+            row.Box.Text = tostring(nums[i])
+        end
+        title.TextColor3 = element.Locked and ThemeValue(self.Window, "MutedText") or (config.TextColor or ThemeValue(self.Window, "Text"))
+    end
+
+    local function fire()
+        SafeCallback(config.Callback, element.Value, element.Transparency)
+    end
+
+    local function setComponent(index, numeric)
+        if element.Locked then return end
+        local r,g,b = rgb(element.Value)
+        local nums = {r,g,b}
+        nums[index] = math.clamp(math.floor((tonumber(numeric) or 0)+0.5),0,255)
+        element.Value = Color3.fromRGB(nums[1],nums[2],nums[3])
+        render()
+        fire()
+    end
+
+    function element:Set(color, newTransparency, fireCallback)
+        if element.Locked then return element end
+        if typeof(color) == "Color3" then element.Value = color end
+        if typeof(newTransparency) == "number" then element.Transparency = math.clamp(newTransparency,0,1) end
+        render()
+        if fireCallback ~= false then fire() end
+        return element
+    end
+
+    function element:GetValue()
+        return element.Value
+    end
+
+    function element:SetOpen(opened)
+        if element.Locked then return element end
+        element.Opened = opened == true
+        editor.Visible = element.Opened
+        frame.Size = config.Size or UDim2.new(1,0,0, element.Opened and (baseHeight + 94) or baseHeight)
+        return element
+    end
+
+    AttachLockAPI(element, config, render)
+
+    preview.MouseButton1Click:Connect(function()
+        if not element.Locked then element:SetOpen(not element.Opened) end
+    end)
+
+    for index,row in ipairs(rows) do
+        local dragging = false
+        local function update(x)
+            if element.Locked then return end
+            local left = row.Track.AbsolutePosition.X
+            local width = math.max(row.Track.AbsoluteSize.X,1)
+            setComponent(index, math.clamp((x-left)/width,0,1)*255)
+        end
+        row.Hitbox.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                update(input.Position.X)
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                update(input.Position.X)
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
+        end)
+        row.Box.FocusLost:Connect(function() setComponent(index,row.Box.Text) end)
+    end
+
+    render()
     return element
 end
 
@@ -3130,6 +3436,49 @@ function Window:Tab(config)
     return tab
 end
 
+
+-- Wind-style direct element API.
+-- The custom layout engine remains available through Tab:Vertical/Free/Grid/etc.
+function Tab:_GetDefaultContainer()
+    if self._DefaultContainer and self._DefaultContainer.Frame and self._DefaultContainer.Frame.Parent then
+        return self._DefaultContainer
+    end
+
+    self._DefaultContainer = CreateContainer(self.Window, self.Page, {
+        Type = "Vertical",
+        Name = "DefaultElements",
+        Position = UDim2.fromOffset(12, 12),
+        Size = UDim2.new(1, -24, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Gap = 8,
+        BackgroundTransparency = 1,
+        ZIndex = 14,
+    })
+
+    return self._DefaultContainer
+end
+
+local DirectTabMethods = {
+    "Panel", "Text", "Paragraph", "Icon", "Button", "Toggle", "Slider",
+    "ProgressBar", "Input", "Dropdown", "Keybind", "Code",
+    "Colorpicker", "ColorPicker", "Section", "Space", "Image",
+}
+
+for _, methodName in ipairs(DirectTabMethods) do
+    if Tab[methodName] == nil then
+        Tab[methodName] = function(self, config)
+            local container = self:_GetDefaultContainer()
+            return container[methodName](container, config or {})
+        end
+    end
+end
+
+-- Content divider without changing Pebble's existing Tab:Divider() sidebar behavior.
+function Tab:ContentDivider(config)
+    local container = self:_GetDefaultContainer()
+    return container:Divider(config or {})
+end
+
 function Tab:Select()
     if self.Locked then
         return self
@@ -3555,5 +3904,5 @@ function Window:Destroy()
     end
 end
 
-print("[Pebble] Loaded v" .. Pebble.Version)
+print("[Pebble] Loaded v" .. Pebble.Version .. " | Wind-style defaults enabled")
 return Pebble
